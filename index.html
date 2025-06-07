@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Absensi Siswa - Precious Kids</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- PWA Manifest and Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0275d8"> <!-- Sesuaikan dengan theme_color di manifest -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Absensi PKids">
+    <!-- <link rel="apple-touch-icon" href="img/icons/icon-152x152.png"> -->
+
+
+    <style>
+        /* Custom scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .tab-button.active {
+            border-color: #3b82f6; /* blue-500 */
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .attendance-method-button.active, .redeem-method-button.active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: auto;
+            max-width: calc(54mm + 45px);
+            border-radius: 8px;
+            position: relative;
+        }
+        .modal-content-lg {
+            max-width: 800px; /* Lebar modal lebih besar untuk form */
+        }
+        .close-button-modal {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            color: #aaa;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            z-index: 10;
+        }
+        .close-button-modal:hover,
+        .close-button-modal:focus {
+            color: black;
+            text-decoration: none;
+        }
+        .search-results-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            margin-top: 0.25rem;
+        }
+        .search-result-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .search-result-item:hover {
+            background-color: #f7fafc;
+        }
+
+        /* Styling untuk kartu agar sesuai ukuran fisik saat capture dan print */
+        .card-print-content {
+            font-family: Arial, sans-serif;
+            border: 0.5mm solid #555 !important;
+            padding: 2mm !important;
+            width: 54mm;
+            height: 86mm;
+            display: flex !important; flex-direction: column !important; align-items: center !important;
+            box-sizing: border-box !important;
+            background-color: #ffffff !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            justify-content: space-between;
+        }
+        .card-print-content .card-main-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1;
+        }
+        .card-print-content .card-header-print {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 0.5mm !important;
+        }
+        .card-print-content #cardLogoPrint {
+            height: 10mm !important;
+            width: auto !important;
+            max-width: 28mm !important;
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            margin-bottom: 1mm !important;
+        }
+        .card-print-content .card-header-print h3 {
+            font-size: 10pt !important;
+            font-weight: bold !important;
+            color: #003366 !important;
+            margin: 0.5mm 0 0.5mm 0 !important;
+            padding: 0 !important;
+        }
+        .card-print-content .manual-photo-placeholder-print {
+            width: 30mm;
+            height: 40mm;
+            border: 0.5mm dashed #bbb !important;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 6pt !important; color: #aaa !important;
+            margin-top: 2mm;
+            margin-bottom: 1.5mm !important;
+            background-color: #fdfdfd !important;
+        }
+        .card-print-content #cardNamaSiswaPrint {
+            font-size: 7.5pt !important;
+            font-weight: bold !important;
+            color: #000 !important;
+            margin-bottom: 0.2mm !important;
+            text-align: center;
+            width: 100%;
+            margin-top: 0mm;
+        }
+        .card-print-content #cardKodeSiswaOnCardPrint {
+            font-size: 6.5pt !important;
+            font-weight: normal !important;
+            color: #333 !important;
+            margin-bottom: 1.5mm !important;
+            text-align: center;
+            width: 100%;
+        }
+        .card-print-content .card-footer-print {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0;
+            margin-top: 0.5mm;
+            margin-bottom: 0.2mm;
+        }
+        .card-print-content #cardQrCodePrintContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1mm;
+        }
+        .card-print-content #cardQrCodePrint {
+            width: 12mm !important; height: 12mm !important;
+        }
+        .card-print-content .card-join-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-end;
+            margin-bottom: 1mm;
+        }
+        .card-print-content #cardTanggalBergabungPrint {
+            font-size: 5pt !important;
+            color: #333 !important;
+            text-align: right !important;
+            white-space: nowrap;
+            margin-bottom: 0.6mm; /* Disesuaikan agar naik sedikit */
+        }
+        .card-print-content .new-card-footer {
+            width: auto;
+            text-align: right;
+            font-size: 4pt !important;
+            color: #0ea5e9 !important; /* Tailwind sky-500 */
+            font-weight: 500;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media print {
+             .actions-modal-buttons { display: none !important; }
+             .close-button-modal { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="appLoader" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+        <p class="ml-3 text-white text-lg">Memuat aplikasi...</p>
+    </div>
+
+    <div class="container mx-auto p-4 min-h-screen">
+        <header class="bg-blue-600 text-white p-6 rounded-lg shadow-md mb-6">
+            <h1 class="text-3xl font-bold text-center">Aplikasi Absensi Siswa - Precious Kids</h1>
+            <!-- Perubahan: Mengganti User ID dengan Status Online/Offline -->
+            <p class="text-center text-sm flex items-center justify-center space-x-2 mt-2" id="statusContainer">
+                <span id="statusIndicator" class="h-2.5 w-2.5 rounded-full bg-yellow-400"></span>
+                <span id="statusText">Menghubungkan...</span>
+            </p>
+        </header>
+
+        <nav class="mb-6">
+            <div class="flex border-b border-gray-300">
+                <button data-tab="absensi" id="tabAbsensiBtn" class="tab-button py-3 px-6 text-gray-600 hover:text-blue-500 border-b-2 border-transparent focus:outline-none active">Absensi</button>
+                <button data-tab="penukaranPoin" id="tabPenukaranPoinBtn" class="tab-button py-3 px-6 text-gray-600 hover:text-blue-500 border-b-2 border-transparent focus:outline-none">Penukaran Poin</button>
+                <button data-tab="dashboard" id="tabDashboardBtn" class="tab-button py-3 px-6 text-gray-600 hover:text-blue-500 border-b-2 border-transparent focus:outline-none">Dashboard</button>
+            </div>
+        </nav>
+
+        <main id="mainContent">
+            <!-- Section Absensi -->
+            <section id="absensiSection" class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-2 text-blue-700 text-center">Form Absensi</h2>
+                <div id="absensiMessage" class="mb-4 text-sm text-center min-h-[1.25rem]"></div>
+                <div class="mb-6 flex space-x-2">
+                    <button id="btnPilihAbsenManual" class="attendance-method-button flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md shadow-sm">Absen Manual</button>
+                    <button id="btnPilihAbsenScan" class="attendance-method-button flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md shadow-sm">Absen via Barcode/QR</button>
+                </div>
+
+                <div id="absenManualContainer" class="hidden">
+                    <h3 class="text-xl font-medium mb-3">Absen Manual</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="searchNamaSiswa" class="block text-sm font-medium text-gray-700">Cari Nama Siswa Aktif (min. 3 huruf)</label>
+                            <input type="text" id="searchNamaSiswa" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ketik nama siswa...">
+                            <div id="searchResultsContainer" class="search-results-container hidden"></div>
+                        </div>
+                        <div id="kodeSiswaAbsenContainer">
+                            <label for="kodeSiswaAbsen" class="block text-sm font-medium text-gray-700">Kode Siswa</label>
+                            <input type="text" id="kodeSiswaAbsen" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ketik kode siswa atau pilih dari pencarian">
+                        </div>
+                        <button id="btnAbsenManual" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150">
+                            Proses Absen
+                        </button>
+                    </div>
+                </div>
+
+                <div id="absenScanContainer" class="hidden">
+                    <h3 class="text-xl font-medium mb-3">Absen via Barcode/QR Code</h3>
+                    <div id="barcodeScannerContainer" class="border-2 border-dashed border-gray-300 rounded-md p-4 min-h-[250px] flex flex-col items-center justify-center">
+                        <p id="scannerInstruction" class="text-gray-500 text-center mb-2">Arahkan QR code siswa ke kamera.</p>
+                        <div id="reader" style="width: 100%; max-width:300px;" class="mt-2"></div>
+                         <p id="scannerStatus" class="text-sm text-gray-600 mt-2 min-h-[1.25rem]"></p>
+                         <button id="stopScannerBtn" class="hidden mt-4 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150">
+                             Hentikan Pindai
+                         </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Penukaran Poin -->
+            <section id="penukaranPoinSection" class="hidden bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-2 text-blue-700 text-center">Penukaran Poin / Bazar</h2>
+                <div id="penukaranPoinMessage" class="mb-4 text-sm text-center min-h-[1.25rem]"></div>
+
+                <div id="areaPencarianPoinUtama" class="mb-6">
+                    <label for="searchInputPoin" class="block text-sm font-medium text-gray-700">Pencarian Siswa (Nama atau Kode)</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="text" id="searchInputPoin" class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 px-3 py-2" placeholder="Ketik Nama atau Kode Siswa...">
+                        <button type="button" id="btnSearchSiswaPoin" class="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 sm:text-sm rounded-r-md">
+                            Cari
+                        </button>
+                    </div>
+                    <div id="searchResultsPoinContainer" class="search-results-container hidden"></div>
+                    <button id="btnScanQrPoin" class="mt-3 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                        Atau Scan QR Code Siswa
+                    </button>
+                </div>
+
+                <div id="scanPoinContainer" class="hidden border-2 border-dashed border-gray-300 rounded-md p-4 min-h-[250px] flex flex-col items-center justify-center mb-6">
+                    <p id="scannerInstructionPoin" class="text-gray-500 text-center mb-2">Arahkan QR code siswa ke kamera.</p>
+                    <div id="readerPoin" style="width: 100%; max-width:300px;" class="mt-2 mx-auto"></div>
+                    <p id="scannerStatusPoin" class="text-sm text-gray-600 mt-2 text-center min-h-[1.25rem]"></p>
+                    <button id="stopScannerPoinBtn" class="hidden mt-2 mx-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-md shadow-sm text-xs">
+                        Hentikan Pindai
+                    </button>
+                </div>
+
+                <div id="detailSiswaPoinContainer" class="hidden mt-6 bg-gray-50 p-4 rounded-md">
+                    <h4 class="text-lg font-medium text-gray-800 mb-2">Detail Siswa:</h4>
+                    <p class="text-sm"><strong>Kode:</strong> <span id="detailKodeSiswaPoin">-</span></p>
+                    <p class="text-sm"><strong>Nama:</strong> <span id="detailNamaSiswaPoin">-</span></p>
+                    <p class="text-sm mb-3"><strong>Poin Dimiliki:</strong> <span id="detailJumlahPoinSiswa" class="font-bold text-green-600">-</span></p>
+
+                    <div class="mt-4">
+                        <label for="poinDitukar" class="block text-sm font-medium text-gray-700">Jumlah Poin Akan Ditukar</label>
+                        <input type="number" id="poinDitukar" min="1" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div class="mt-4 flex space-x-3">
+                        <button id="btnProsesTukarPoin" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">Tukar Poin</button>
+                        <button id="btnBatalTukarPoin" type="button" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md shadow-sm">Batal</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Dashboard -->
+            <section id="dashboardSection" class="hidden bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Dashboard Admin</h2>
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button data-subtab="dataSiswa" class="subtab-button py-2 px-4 text-gray-500 hover:text-blue-500 border-b-2 border-transparent focus:outline-none active">Data Siswa</button>
+                    <button data-subtab="laporanAbsensi" class="subtab-button py-2 px-4 text-gray-500 hover:text-blue-500 border-b-2 border-transparent focus:outline-none">Laporan Absensi</button>
+                    <button data-subtab="laporanPenukaranPoin" class="subtab-button py-2 px-4 text-gray-500 hover:text-blue-500 border-b-2 border-transparent focus:outline-none">Laporan Penukaran Poin</button>
+                </div>
+
+                <!-- Sub-section Data Siswa -->
+                <div id="dataSiswaSubSection">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-medium">Manajemen Data Siswa</h3>
+                        <button id="btnTambahSiswa" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150">
+                            Tambah Siswa Baru
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poin</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. HP</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelDataSiswa" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="6" class="text-center py-4">Memuat data siswa...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-section Laporan Absensi -->
+                <div id="laporanAbsensiSubSection" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-medium">Laporan Kehadiran Siswa</h3>
+                        <button id="btnHapusLaporanLama" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 text-sm">
+                            Hapus Laporan > 3 Bulan
+                        </button>
+                    </div>
+                     <div class="mb-4">
+                        <label for="filterTanggalLaporan" class="block text-sm font-medium text-gray-700">Filter Tanggal:</label>
+                        <input type="date" id="filterTanggalLaporan" class="mt-1 block w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Siswa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelLaporanAbsensi" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="5" class="text-center py-4">Memuat laporan absensi...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-section Laporan Penukaran Poin -->
+                <div id="laporanPenukaranPoinSubSection" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-medium">Laporan Penukaran Poin Siswa</h3>
+                        <button id="btnHapusLaporanPoinLama" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-150 text-sm">
+                            Hapus Laporan Poin > 3 Bulan
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <label for="filterTanggalLaporanPoin" class="block text-sm font-medium text-gray-700">Filter Tanggal:</label>
+                        <input type="date" id="filterTanggalLaporanPoin" class="mt-1 block w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Siswa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poin Ditukar</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa Poin (Saat Itu)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dicatat Oleh (ID)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelLaporanPenukaranPoin" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="7" class="text-center py-4">Memuat laporan penukaran poin...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Form Siswa -->
+    <div id="formSiswaModal" class="modal">
+        <div class="modal-content modal-content-lg">
+            <span class="close-button-modal" onclick="closeModal('formSiswaModal')">&times;</span>
+            <h3 id="formSiswaTitle" class="text-xl font-semibold mb-4">Tambah Siswa Baru</h3>
+            <form id="formSiswa" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="kode" class="block text-sm font-medium text-gray-700">Kode Siswa <span class="text-red-500">*</span></label>
+                        <input type="text" id="kode" name="kode" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-100" readonly>
+                    </div>
+                    <div>
+                        <label for="nama" class="block text-sm font-medium text-gray-700">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" id="nama" name="nama" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="nama_alias" class="block text-sm font-medium text-gray-700">Nama Alias</label>
+                        <input type="text" id="nama_alias" name="nama_alias" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="jenis" class="block text-sm font-medium text-gray-700">Jenis Kelamin <span class="text-red-500">*</span></label>
+                        <select id="jenis" name="jenis" required class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
+                        <input type="date" id="tanggal_lahir" name="tanggal_lahir" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="nik" class="block text-sm font-medium text-gray-700">NIK</label>
+                        <input type="text" id="nik" name="nik" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="nama_ayah" class="block text-sm font-medium text-gray-700">Nama Ayah</label>
+                        <input type="text" id="nama_ayah" name="nama_ayah" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="nama_ibu" class="block text-sm font-medium text-gray-700">Nama Ibu</label>
+                        <input type="text" id="nama_ibu" name="nama_ibu" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label for="alamat" class="block text-sm font-medium text-gray-700">Alamat</label>
+                    <textarea id="alamat" name="alamat" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="kota" class="block text-sm font-medium text-gray-700">Kota</label>
+                        <input type="text" id="kota" name="kota" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="no_hp" class="block text-sm font-medium text-gray-700">No. HP</label>
+                        <input type="tel" id="no_hp" name="no_hp" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label for="tanggal_masuk" class="block text-sm font-medium text-gray-700">Tanggal Masuk <span class="text-red-500">*</span></label>
+                        <input type="date" id="tanggal_masuk" name="tanggal_masuk" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="poin" class="block text-sm font-medium text-gray-700">Poin</label>
+                        <input type="number" id="poin" name="poin" value="0" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <input id="lulus" name="lulus" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="lulus" class="ml-2 block text-sm text-gray-900">Sudah Lulus?</label>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('formSiswaModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-md shadow-sm">Batal</button>
+                    <button type="submit" id="btnSimpanSiswa" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Kartu Siswa -->
+    <div id="studentCardModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button-modal" onclick="closeModal('studentCardModal')">&times;</span>
+            <div id="studentCardPrintArea">
+                 <div class="card-print-content">
+                    <div class="card-main-area">
+                        <div class="card-header-print">
+                            <img id="cardLogoPrint"
+                                 src="https://absensipkids.netlify.app/img/mahanaim.png"
+                                 alt="Logo Sekolah"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/100x40/003366/FFFFFF?text=Logo'; console.error('Gagal memuat logo sekolah.');">
+                            <h3>PRECIOUS KIDS</h3>
+                        </div>
+                        <div id="cardFotoPlaceholder" class="manual-photo-placeholder-print">
+                            Foto 3x4
+                        </div>
+                        <p id="cardNamaSiswaPrint">Nama Siswa</p>
+                        <p id="cardKodeSiswaOnCardPrint">KODE: -</p>
+
+                        <div class="card-footer-print">
+                            <div id="cardQrCodePrintContainer">
+                                <div id="cardQrCodePrint"></div>
+                            </div>
+                            <div class="card-join-info">
+                                <p id="cardTanggalBergabungPrint">Join: DD/MM/YYYY</p>
+                                <!--<p class="new-card-footer">GPDI Mahanaim Tegal - @gpdimahanaim_tegal</p>-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="actions-modal-buttons mt-4 w-full flex flex-col space-y-2">
+                <button id="btnSimpanKartuGambar" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-3 rounded-md shadow-sm text-xs">Simpan sebagai Gambar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Password Dashboard -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content max-w-sm">
+            <span class="close-button-modal" onclick="closeModal('passwordModal'); resetToAbsensiTab();">&times;</span>
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Akses Dashboard</h3>
+            <form id="passwordForm">
+                <div>
+                    <label for="dashboardPassword" class="block text-sm font-medium text-gray-700">Masukkan Password</label>
+                    <input type="password" id="dashboardPassword" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <p id="passwordError" class="text-red-500 text-xs mt-1 hidden"></p>
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">Masuk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Alert -->
+    <div id="customAlert" class="fixed bottom-5 right-5 bg-gray-800 text-white py-3 px-5 rounded-lg shadow-xl text-sm z-[150]" style="display: none;">
+        <p id="customAlertMessage"></p>
+    </div>
+
+    <script type="module">
+        console.log("Script execution started.");
+
+        // Firebase SDK imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, query, where, Timestamp, onSnapshot, updateDoc, orderBy, limit, writeBatch
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        console.log("Firebase SDKs imported.");
+
+        // --- Konfigurasi Firebase Anda ---
+        // Ganti dengan konfigurasi Firebase proyek Anda
+        const firebaseConfigFromUser = {
+            apiKey: "AIzaSyAT4tPfqd5u2ivG69rxFkwmNw7qLgnmjMs", // SESUAIKAN
+            authDomain: "absensipkids.firebaseapp.com", // SESUAIKAN
+            projectId: "absensipkids", // SESUAIKAN
+            storageBucket: "absensipkids.appspot.com", // SESUAIKAN
+            messagingSenderId: "543219117304", // SESUAIKAN
+            appId: "1:543219117304:web:ee89939a517f8c5fad1f0d", // SESUAIKAN
+            measurementId: "G-0BQSKB4M42" // SESUAIKAN (opsional)
+        };
+        const appId = firebaseConfigFromUser.projectId; // Menggunakan projectId sebagai appId
+        // --- Akhir Konfigurasi ---
+
+        let db, auth, userId, isAuthReady = false;
+        let initialAuthCheckDone = false;
+        const msiswaCollectionName = 'msiswa';
+        const absensiCollectionName = 'absensi';
+        const penukaranPoinLogCollectionName = 'penukaranPoinLog'; // Koleksi baru
+
+        let html5QrCodeInstance = null;
+        let html5QrCodePoinInstance = null;
+        let manualAttendanceSuccessTimeoutId = null;
+        let searchDebounceTimeout = null;
+        let isDashboardAccessGranted = false;
+        const DASHBOARD_PASSWORD = "adminpkids"; // PERHATIAN: Ini tidak aman di client-side
+        let attendanceActivityTimeoutId = null;
+        const ATTENDANCE_INACTIVITY_DURATION = 2 * 60 * 1000; // 2 menit
+        const MAX_SISWA_KODE = 99999;
+
+
+        // --- Firebase Initialization and Auth ---
+        async function initializeFirebase() {
+            console.log("DEBUG: initializeFirebase: Function called.");
+            try {
+                console.log("DEBUG: initializeFirebase: Initializing Firebase with user's config:", firebaseConfigFromUser);
+                const app = initializeApp(firebaseConfigFromUser);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                console.log("DEBUG: initializeFirebase: Firebase core services obtained.");
+
+                onAuthStateChanged(auth, async (user) => {
+                    console.log("DEBUG: onAuthStateChanged: Listener triggered. User object:", user ? user.uid : "null");
+                    try {
+                        if (user) {
+                            userId = user.uid;
+                            console.log("DEBUG: onAuthStateChanged: User is signed in. UID:", userId);
+                            updateOnlineStatus(true); // Memperbarui status menjadi Online
+                            isAuthReady = true;
+                            if (!document.body.dataset.appInitialized) {
+                                 initializeAppLogic();
+                                 document.body.dataset.appInitialized = 'true';
+                            }
+                        } else {
+                            console.log("DEBUG: onAuthStateChanged: User is null. Attempting anonymous sign-in.");
+                            try {
+                                await signInAnonymously(auth);
+                                console.log("DEBUG: onAuthStateChanged: signInAnonymously attempt finished.");
+                                if (!auth.currentUser) {
+                                    console.warn("DEBUG: onAuthStateChanged: Anonymous sign-in finished but NO USER OBJECT.");
+                                    showCustomAlert("Gagal login. Pastikan Anonymous Sign-in diaktifkan di Firebase Console.", "error");
+                                    updateOnlineStatus(false);
+                                }
+                            } catch (anonError) {
+                                console.error("DEBUG: onAuthStateChanged: Error during signInAnonymously:", anonError);
+                                showCustomAlert(`Gagal login: ${anonError.message}`, "error");
+                                updateOnlineStatus(false);
+                            }
+                        }
+                    } catch (callbackError) {
+                        console.error("DEBUG: Error inside onAuthStateChanged callback:", callbackError);
+                        showCustomAlert(`Error internal auth: ${callbackError.message}`, 'error');
+                        updateOnlineStatus(false);
+                    } finally {
+                        if (!initialAuthCheckDone) {
+                            const loader = document.getElementById('appLoader');
+                            if(loader) loader.style.display = 'none';
+                            initialAuthCheckDone = true;
+                            console.log("DEBUG: onAuthStateChanged: Initial auth state processed, loader hidden.");
+                        }
+                    }
+                });
+                console.log("DEBUG: initializeFirebase: onAuthStateChanged listener set up.");
+
+                try {
+                    console.log("DEBUG: initializeFirebase: Attempting to set persistence...");
+                    await setPersistence(auth, browserLocalPersistence);
+                    console.log("DEBUG: initializeFirebase: Browser local persistence set successfully.");
+                } catch (persistenceError) {
+                    console.error("DEBUG: initializeFirebase: Error setting persistence:", persistenceError);
+                    showCustomAlert(`Peringatan: Gagal mengatur persistensi login: ${persistenceError.message}`, 'warning');
+                }
+
+            } catch (error) {
+                console.error("DEBUG: Firebase Initialization Error (outer catch):", error);
+                showCustomAlert(`Kritis: Error Inisialisasi Firebase: ${error.message}`, 'error');
+                const loader = document.getElementById('appLoader');
+                if(loader) loader.style.display = 'none'; else console.error("DEBUG: appLoader element not found in initializeFirebase outer catch");
+                initialAuthCheckDone = true;
+                updateOnlineStatus(false);
+            }
+        }
+
+        // --- App Logic (called after auth is ready) ---
+        function initializeAppLogic() {
+            if (!isAuthReady) {
+                console.warn("DEBUG: initializeAppLogic: Auth not ready, skipping app logic initialization.");
+                return;
+            }
+            console.log("DEBUG: initializeAppLogic: Auth ready, initializing app logic.");
+            setupEventListeners();
+            setupTabNavigation();
+            setupSubTabNavigation();
+            setupAttendanceMethodButtons();
+            setupRedeemPointUI();
+
+            const filterTanggalLaporanEl = document.getElementById('filterTanggalLaporan');
+            if (filterTanggalLaporanEl) {
+                filterTanggalLaporanEl.valueAsDate = new Date();
+                filterTanggalLaporanEl.addEventListener('change', loadLaporanAbsensi);
+            }
+
+            const btnHapusLaporanLamaEl = document.getElementById('btnHapusLaporanLama');
+            if(btnHapusLaporanLamaEl) btnHapusLaporanLamaEl.addEventListener('click', hapusLaporanLama);
+
+            // Event listener untuk laporan penukaran poin
+            const filterTanggalLaporanPoinEl = document.getElementById('filterTanggalLaporanPoin');
+            if (filterTanggalLaporanPoinEl) {
+                filterTanggalLaporanPoinEl.valueAsDate = new Date(); // Set default ke hari ini
+                filterTanggalLaporanPoinEl.addEventListener('change', loadLaporanPenukaranPoin);
+            }
+
+            const btnHapusLaporanPoinLamaEl = document.getElementById('btnHapusLaporanPoinLama');
+            if (btnHapusLaporanPoinLamaEl) {
+                btnHapusLaporanPoinLamaEl.addEventListener('click', hapusLaporanPoinLama);
+            }
+
+            const btnSimpanKartuGambarEl = document.getElementById('btnSimpanKartuGambar');
+            if(btnSimpanKartuGambarEl) btnSimpanKartuGambarEl.addEventListener('click', simpanKartuSebagaiGambar);
+
+            // Panggil fungsi untuk memuat data awal pada tab aktif jika itu dashboard
+             const activeTab = document.querySelector('.tab-button.active');
+             if (activeTab && activeTab.dataset.tab === 'dashboard') {
+                const activeSubTab = document.querySelector('#dashboardSection .subtab-button.active');
+                if (activeSubTab) {
+                    if (activeSubTab.dataset.subtab === 'dataSiswa') loadDataSiswa();
+                    else if (activeSubTab.dataset.subtab === 'laporanAbsensi') loadLaporanAbsensi();
+                    else if (activeSubTab.dataset.subtab === 'laporanPenukaranPoin') loadLaporanPenukaranPoin();
+                } else {
+                    loadDataSiswa(); // Default ke data siswa jika tidak ada subtab aktif
+                }
+             } else {
+                resetAttendanceUI(false); // Reset UI absensi jika tab defaultnya absensi
+             }
+        }
+
+        // --- UI Helper Functions ---
+        function showCustomAlert(message, type = 'info', duration = 3000) {
+            const alertBox = document.getElementById('customAlert');
+            const alertMessage = document.getElementById('customAlertMessage');
+            if (!alertBox || !alertMessage) {
+                console.error("Custom alert elements not found.");
+                return;
+            }
+            alertMessage.textContent = message;
+
+            alertBox.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-gray-800');
+            if (type === 'success') alertBox.classList.add('bg-green-500');
+            else if (type === 'error') alertBox.classList.add('bg-red-500');
+            else if (type === 'warning') alertBox.classList.add('bg-yellow-500');
+            else alertBox.classList.add('bg-gray-800');
+
+            alertBox.style.display = 'block';
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, duration);
+        }
+
+        function updateOnlineStatus(isOnline) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            if (statusIndicator && statusText) {
+                if (isOnline) {
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-red-500');
+                    statusIndicator.classList.add('bg-green-400');
+                    statusText.textContent = 'Status: Online';
+                } else {
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-400');
+                    statusIndicator.classList.add('bg-red-500');
+                    statusText.textContent = 'Status: Offline';
+                }
+            }
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) modal.style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) modal.style.display = 'none';
+
+            if (modalId === 'formSiswaModal') {
+                const form = document.getElementById('formSiswa');
+                if(form) form.reset();
+                const kodeInput = document.getElementById('kode');
+                if (kodeInput) {
+                    kodeInput.readOnly = false;
+                    kodeInput.classList.remove('bg-gray-100');
+                }
+            }
+            if (modalId === 'passwordModal') {
+                const passwordInput = document.getElementById('dashboardPassword');
+                if(passwordInput) passwordInput.value = '';
+                const passwordError = document.getElementById('passwordError');
+                if(passwordError) passwordError.classList.add('hidden');
+            }
+        }
+
+        function resetToAbsensiTab() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const sections = {
+                absensi: document.getElementById('absensiSection'),
+                penukaranPoin: document.getElementById('penukaranPoinSection'),
+                dashboard: document.getElementById('dashboardSection')
+            };
+
+            tabButtons.forEach(btn => {
+                if (btn.dataset.tab === 'absensi') btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            if(sections.absensi) sections.absensi.classList.remove('hidden');
+            if(sections.penukaranPoin) sections.penukaranPoin.classList.add('hidden');
+            if(sections.dashboard) sections.dashboard.classList.add('hidden');
+
+            resetAttendanceUI(false);
+            resetPenukaranPoinUI(false);
+        }
+
+        // Assign to window object to make them globally accessible from HTML onclick
+        window.closeModal = closeModal;
+        window.openModal = openModal;
+        window.resetToAbsensiTab = resetToAbsensiTab;
+
+
+        function resetAttendanceUI(fromTimeout = false) {
+            console.log("DEBUG: resetAttendanceUI called. From timeout:", fromTimeout);
+            const absenManualContainerEl = document.getElementById('absenManualContainer');
+            if (absenManualContainerEl) absenManualContainerEl.classList.add('hidden');
+            const absenScanContainerEl = document.getElementById('absenScanContainer');
+            if (absenScanContainerEl) absenScanContainerEl.classList.add('hidden');
+
+            document.querySelectorAll('.attendance-method-button').forEach(btn => btn.classList.remove('active'));
+
+            const absensiMessageEl = document.getElementById('absensiMessage');
+            if (absensiMessageEl) {
+                absensiMessageEl.textContent = '';
+                absensiMessageEl.className = 'mb-4 text-sm text-center min-h-[1.25rem]';
+            }
+            const scannerStatusEl = document.getElementById('scannerStatus');
+            if (scannerStatusEl) scannerStatusEl.textContent = '';
+            const searchNamaSiswaEl = document.getElementById('searchNamaSiswa');
+            if (searchNamaSiswaEl) searchNamaSiswaEl.value = '';
+            const kodeSiswaAbsenEl = document.getElementById('kodeSiswaAbsen');
+            if (kodeSiswaAbsenEl) kodeSiswaAbsenEl.value = '';
+            const searchResultsContainerEl = document.getElementById('searchResultsContainer');
+            if (searchResultsContainerEl) {
+                searchResultsContainerEl.classList.add('hidden');
+                searchResultsContainerEl.innerHTML = '';
+            }
+
+            if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+                html5QrCodeInstance.stop().catch(err => console.warn("Error stopping scanner on UI reset:", err));
+            }
+            const stopScannerBtnEl = document.getElementById('stopScannerBtn');
+            if (stopScannerBtnEl) stopScannerBtnEl.classList.add('hidden');
+            const scannerInstructionEl = document.getElementById('scannerInstruction');
+            if (scannerInstructionEl) scannerInstructionEl.textContent = "Arahkan QR code siswa ke kamera.";
+
+            if (attendanceActivityTimeoutId) {
+                clearTimeout(attendanceActivityTimeoutId);
+                attendanceActivityTimeoutId = null;
+            }
+            if (fromTimeout) {
+                showCustomAlert("Sesi absen tidak aktif, silakan pilih metode lagi.", "info");
+            }
+        }
+
+        function resetPenukaranPoinUI(fromTimeout = false) {
+            console.log("DEBUG: resetPenukaranPoinUI called. From timeout:", fromTimeout);
+            const areaPencarianPoinEl = document.getElementById('areaPencarianPoinUtama');
+            if(areaPencarianPoinEl) areaPencarianPoinEl.classList.remove('hidden');
+            const scanPoinContainerEl = document.getElementById('scanPoinContainer');
+            if(scanPoinContainerEl) scanPoinContainerEl.classList.add('hidden');
+            const readerPoinEl = document.getElementById('readerPoin');
+            if(readerPoinEl) readerPoinEl.classList.add('hidden');
+            const stopScannerPoinBtnEl = document.getElementById('stopScannerPoinBtn');
+            if(stopScannerPoinBtnEl) stopScannerPoinBtnEl.classList.add('hidden');
+            const detailSiswaPoinContainerEl = document.getElementById('detailSiswaPoinContainer');
+            if(detailSiswaPoinContainerEl) detailSiswaPoinContainerEl.classList.add('hidden');
+            const penukaranPoinMessageEl = document.getElementById('penukaranPoinMessage');
+            if(penukaranPoinMessageEl) {
+                penukaranPoinMessageEl.textContent = '';
+                penukaranPoinMessageEl.className = 'mb-4 text-sm text-center min-h-[1.25rem]';
+            }
+            const scannerStatusPoinEl = document.getElementById('scannerStatusPoin');
+            if(scannerStatusPoinEl) scannerStatusPoinEl.textContent = '';
+            const searchInputPoinEl = document.getElementById('searchInputPoin');
+            if(searchInputPoinEl) searchInputPoinEl.value = '';
+            const searchResultsPoinContainerEl = document.getElementById('searchResultsPoinContainer');
+            if(searchResultsPoinContainerEl) {
+                searchResultsPoinContainerEl.classList.add('hidden');
+                searchResultsPoinContainerEl.innerHTML = '';
+            }
+            const poinDitukarEl = document.getElementById('poinDitukar');
+            if(poinDitukarEl) poinDitukarEl.value = '';
+
+            if (html5QrCodePoinInstance && html5QrCodePoinInstance.isScanning) {
+                html5QrCodePoinInstance.stop().catch(err => console.warn("Error stopping Poin scanner on UI reset:", err));
+            }
+            const scannerInstructionPoinEl = document.getElementById('scannerInstructionPoin');
+            if(scannerInstructionPoinEl) scannerInstructionPoinEl.textContent = "Arahkan QR code siswa ke kamera.";
+
+            if (attendanceActivityTimeoutId) {
+                clearTimeout(attendanceActivityTimeoutId);
+                attendanceActivityTimeoutId = null;
+            }
+             if (fromTimeout) {
+                showCustomAlert("Sesi penukaran poin tidak aktif, silakan cari siswa lagi.", "info");
+            }
+        }
+
+        function startAttendanceInactivityTimer() {
+            if (attendanceActivityTimeoutId) {
+                clearTimeout(attendanceActivityTimeoutId);
+            }
+            console.log("DEBUG: Starting inactivity timer for attendance/redeem methods (2 minutes).");
+            attendanceActivityTimeoutId = setTimeout(() => {
+                console.log("DEBUG: Attendance/Redeem method inactivity timeout reached.");
+                const absensiSection = document.getElementById('absensiSection');
+                const penukaranPoinSection = document.getElementById('penukaranPoinSection');
+
+                if (absensiSection && absensiSection.offsetParent !== null &&
+                    (!document.getElementById('absenManualContainer').classList.contains('hidden') ||
+                     !document.getElementById('absenScanContainer').classList.contains('hidden')) ) {
+                    resetAttendanceUI(true);
+                }
+                if (penukaranPoinSection && penukaranPoinSection.offsetParent !== null &&
+                    (!document.getElementById('areaPencarianPoinUtama').classList.contains('hidden') ||
+                     !document.getElementById('detailSiswaPoinContainer').classList.contains('hidden') ||
+                     !document.getElementById('scanPoinContainer').classList.contains('hidden')
+                    ) ) {
+                    resetPenukaranPoinUI(true);
+                }
+            }, ATTENDANCE_INACTIVITY_DURATION);
+        }
+
+        // --- Navigation Setup ---
+        function setupTabNavigation() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const sections = {
+                absensi: document.getElementById('absensiSection'),
+                penukaranPoin: document.getElementById('penukaranPoinSection'),
+                dashboard: document.getElementById('dashboardSection')
+            };
+            const passwordModal = document.getElementById('passwordModal');
+            const passwordForm = document.getElementById('passwordForm');
+            const passwordInput = document.getElementById('dashboardPassword');
+            const passwordError = document.getElementById('passwordError');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const tab = button.dataset.tab;
+
+                    if (tab === 'dashboard' && !isDashboardAccessGranted) {
+                        e.preventDefault();
+                        if(passwordModal) openModal('passwordModal');
+                        if(passwordInput) passwordInput.focus();
+                        return;
+                    }
+
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    Object.values(sections).forEach(section => {
+                        if(section) section.classList.add('hidden');
+                    });
+                    if (sections[tab]) {
+                        sections[tab].classList.remove('hidden');
+                         if (tab === 'absensi') {
+                            resetAttendanceUI(false);
+                        } else if (tab === 'penukaranPoin') {
+                            resetPenukaranPoinUI(false);
+                        } else if (tab === 'dashboard') {
+                            // Memuat data untuk subtab dashboard yang aktif
+                            const activeSubTab = document.querySelector('#dashboardSection .subtab-button.active');
+                            if (activeSubTab) {
+                                if (activeSubTab.dataset.subtab === 'dataSiswa') loadDataSiswa();
+                                else if (activeSubTab.dataset.subtab === 'laporanAbsensi') loadLaporanAbsensi();
+                                else if (activeSubTab.dataset.subtab === 'laporanPenukaranPoin') loadLaporanPenukaranPoin();
+                            } else {
+                                loadDataSiswa(); // Default ke data siswa
+                            }
+                        }
+                    }
+                });
+            });
+
+            if (passwordForm) {
+                passwordForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    if (passwordInput && passwordInput.value === DASHBOARD_PASSWORD) {
+                        isDashboardAccessGranted = true;
+                        closeModal('passwordModal');
+                        if(passwordError) passwordError.classList.add('hidden');
+                        const tabDashboardBtn = document.getElementById('tabDashboardBtn');
+                        if(tabDashboardBtn) tabDashboardBtn.click();
+                    } else {
+                        if(passwordError) {
+                            passwordError.textContent = 'Password salah. Coba lagi.';
+                            passwordError.classList.remove('hidden');
+                        }
+                        if(passwordInput) {
+                            passwordInput.value = '';
+                            passwordInput.focus();
+                        }
+                    }
+                });
+            }
+        }
+
+        function setupSubTabNavigation() {
+            const subTabButtons = document.querySelectorAll('#dashboardSection .subtab-button');
+            const subSections = {
+                dataSiswa: document.getElementById('dataSiswaSubSection'),
+                laporanAbsensi: document.getElementById('laporanAbsensiSubSection'),
+                laporanPenukaranPoin: document.getElementById('laporanPenukaranPoinSubSection') // Tambahkan ini
+            };
+
+            subTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const subtab = button.dataset.subtab;
+
+                    subTabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    Object.values(subSections).forEach(section => {
+                        if(section) section.classList.add('hidden');
+                    });
+                    if (subSections[subtab]) {
+                        subSections[subtab].classList.remove('hidden');
+                    }
+
+                    if (subtab === 'dataSiswa') loadDataSiswa();
+                    if (subtab === 'laporanAbsensi') loadLaporanAbsensi();
+                    if (subtab === 'laporanPenukaranPoin') loadLaporanPenukaranPoin(); // Panggil fungsi baru
+                });
+            });
+        }
+
+        function setupAttendanceMethodButtons() {
+            const btnPilihManual = document.getElementById('btnPilihAbsenManual');
+            const btnPilihScan = document.getElementById('btnPilihAbsenScan');
+            const manualContainer = document.getElementById('absenManualContainer');
+            const scanContainer = document.getElementById('absenScanContainer');
+            const absensiMessage = document.getElementById('absensiMessage');
+            const scannerStatus = document.getElementById('scannerStatus');
+            const readerDiv = document.getElementById('reader');
+            const stopScannerBtn = document.getElementById('stopScannerBtn');
+            const scannerInstruction = document.getElementById('scannerInstruction');
+
+            if(btnPilihManual) {
+                btnPilihManual.addEventListener('click', () => {
+                    if(manualContainer) manualContainer.classList.remove('hidden');
+                    if(scanContainer) scanContainer.classList.add('hidden');
+                    btnPilihManual.classList.add('active');
+                    if(btnPilihScan) btnPilihScan.classList.remove('active');
+                    if(absensiMessage) absensiMessage.textContent = '';
+                    if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+                        html5QrCodeInstance.stop().catch(err => console.warn("Error stopping scanner:", err));
+                    }
+                    if(stopScannerBtn) stopScannerBtn.classList.add('hidden');
+                    if(scannerInstruction) scannerInstruction.textContent = "Arahkan QR code siswa ke kamera.";
+                    startAttendanceInactivityTimer();
+                });
+            }
+
+            if(btnPilihScan) {
+                btnPilihScan.addEventListener('click', () => {
+                    if(manualContainer) manualContainer.classList.add('hidden');
+                    if(scanContainer) scanContainer.classList.remove('hidden');
+                    btnPilihScan.classList.add('active');
+                    if(btnPilihManual) btnPilihManual.classList.remove('active');
+                    if(absensiMessage) absensiMessage.textContent = '';
+                    if(scannerStatus) scannerStatus.textContent = '';
+                    if(readerDiv) readerDiv.innerHTML = '';
+
+                    if (typeof Html5Qrcode !== 'undefined') {
+                        if (!html5QrCodeInstance) {
+                             html5QrCodeInstance = new Html5Qrcode("reader");
+                        }
+
+                        const qrCodeSuccessCallback = async (decodedText, decodedResult) => {
+                            console.log(`Code matched = ${decodedText}`, decodedResult);
+                            if(scannerStatus) scannerStatus.textContent = `Kode terdeteksi: ${decodedText}. Memproses...`;
+                            if(stopScannerBtn) stopScannerBtn.classList.add('hidden');
+                            if(scannerInstruction) scannerInstruction.textContent = "Memproses...";
+
+                            clearTimeout(attendanceActivityTimeoutId);
+
+                            if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+                                try {
+                                    await html5QrCodeInstance.stop();
+                                    console.log("QR Code scanning stopped after success.");
+                                } catch(err) {
+                                    console.warn("Gagal menghentikan scanner setelah sukses atau sudah berhenti:", err);
+                                }
+                            }
+                            await prosesAbsenOtomatis(decodedText);
+                        };
+                        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+                        html5QrCodeInstance.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                            .then(() => {
+                                console.log("Scanner started successfully for Absen Scan.");
+                                if(scannerStatus) scannerStatus.textContent = "Arahkan QR code ke kamera...";
+                                if(scannerInstruction) scannerInstruction.textContent = "Arahkan QR code siswa ke kamera.";
+                                if(stopScannerBtn) stopScannerBtn.classList.remove('hidden');
+                                startAttendanceInactivityTimer();
+                            })
+                            .catch(err => {
+                                console.error("Gagal memulai scanner untuk Absen Scan:", err);
+                                if(scannerStatus) scannerStatus.textContent = "Gagal memulai scanner. Pastikan izin kamera diberikan.";
+                                showCustomAlert("Gagal memulai scanner. Pastikan izin kamera diberikan.", "error");
+                                clearTimeout(attendanceActivityTimeoutId);
+                            });
+                    } else {
+                        if(scannerStatus) scannerStatus.textContent = "Fitur pindai tidak tersedia.";
+                    }
+                });
+            }
+            if(stopScannerBtn){
+                stopScannerBtn.addEventListener('click', () => {
+                    if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+                        html5QrCodeInstance.stop()
+                            .then(ignore => {
+                                if(scannerStatus) scannerStatus.textContent = "Pindai dihentikan oleh pengguna.";
+                                stopScannerBtn.classList.add('hidden');
+                                if(scannerInstruction) scannerInstruction.textContent = "Arahkan QR code siswa ke kamera.";
+                                console.log("Scanner stopped by user.");
+                                clearTimeout(attendanceActivityTimeoutId);
+                            })
+                            .catch(err => {
+                                console.warn("Error stopping scanner by user:", err);
+                                if(scannerStatus) scannerStatus.textContent = "Gagal menghentikan pindai.";
+                            });
+                    }
+                });
+            }
+        }
+
+        function setupRedeemPointUI() {
+            const searchInputPoin = document.getElementById('searchInputPoin');
+            const searchResultsPoinContainer = document.getElementById('searchResultsPoinContainer');
+            const btnSearchSiswaPoin = document.getElementById('btnSearchSiswaPoin');
+            const btnScanQrPoin = document.getElementById('btnScanQrPoin');
+            const readerPoinDiv = document.getElementById('readerPoin');
+            const scannerStatusPoin = document.getElementById('scannerStatusPoin');
+            const stopScannerPoinBtn = document.getElementById('stopScannerPoinBtn');
+            const scannerInstructionPoin = document.getElementById('scannerInstructionPoin');
+            const detailSiswaPoinContainer = document.getElementById('detailSiswaPoinContainer');
+            const penukaranPoinMessage = document.getElementById('penukaranPoinMessage');
+            const areaPencarianPoinUtama = document.getElementById('areaPencarianPoinUtama');
+            const scanPoinContainer = document.getElementById('scanPoinContainer');
+
+
+            if(btnSearchSiswaPoin) {
+                btnSearchSiswaPoin.addEventListener('click', () => {
+                    clearTimeout(attendanceActivityTimeoutId);
+                    startAttendanceInactivityTimer();
+                    const searchTerm = searchInputPoin ? searchInputPoin.value.trim() : "";
+                    if (searchTerm.startsWith('PKIDS-')) {
+                        cariSiswaUntukTukarPoin(searchTerm);
+                    } else if (searchTerm.length >= 3) {
+                        if (!isAuthReady || !db) { showCustomAlert("Database belum siap.", "warning"); return; }
+                        if(searchResultsPoinContainer) {
+                            searchResultsPoinContainer.innerHTML = '<div class="search-result-item text-gray-500">Mencari...</div>';
+                            searchResultsPoinContainer.classList.remove('hidden');
+                        }
+                        setTimeout(async () => {
+                            try {
+                                const qSnapshot = await getDocs(query(collection(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`), where("lulus", "==", false)));
+                                const results = [];
+                                qSnapshot.forEach(doc => {
+                                    const siswa = doc.data();
+                                    if (siswa.nama.toLowerCase().includes(searchTerm.toLowerCase())) {
+                                        results.push({ nama: siswa.nama, kode: siswa.kode });
+                                    }
+                                });
+                                if(searchResultsPoinContainer) searchResultsPoinContainer.innerHTML = '';
+                                if (results.length > 0) {
+                                    results.forEach(s => {
+                                        const item = document.createElement('div');
+                                        item.classList.add('search-result-item');
+                                        item.textContent = `${s.nama} (Kode: ${s.kode})`;
+                                        item.onclick = () => {
+                                            if(searchInputPoin) searchInputPoin.value = s.kode;
+                                            if(searchResultsPoinContainer) searchResultsPoinContainer.classList.add('hidden');
+                                            cariSiswaUntukTukarPoin(s.kode); // Langsung cari setelah dipilih
+                                        };
+                                        if(searchResultsPoinContainer) searchResultsPoinContainer.appendChild(item);
+                                    });
+                                } else { if(searchResultsPoinContainer) searchResultsPoinContainer.innerHTML = '<div class="search-result-item text-gray-500">Nama tidak ditemukan atau siswa sudah lulus.</div>'; }
+                            } catch (e) { console.error(e); if(searchResultsPoinContainer) searchResultsPoinContainer.innerHTML = '<div class="search-result-item text-red-500">Gagal mencari.</div>'; }
+                        }, 300);
+                    } else {
+                        showCustomAlert("Masukkan minimal 3 huruf untuk pencarian nama, atau masukkan kode siswa lengkap.", "info");
+                    }
+                });
+            }
+
+            if(searchInputPoin) searchInputPoin.addEventListener('input', () => startAttendanceInactivityTimer());
+
+            if(btnScanQrPoin) {
+                btnScanQrPoin.addEventListener('click', () => {
+                    clearTimeout(attendanceActivityTimeoutId);
+                    startAttendanceInactivityTimer();
+                    if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.add('hidden');
+                    if(scanPoinContainer) scanPoinContainer.classList.remove('hidden');
+                    if(penukaranPoinMessage) penukaranPoinMessage.textContent = '';
+                    if(scannerStatusPoin) scannerStatusPoin.textContent = '';
+                    if(readerPoinDiv) {
+                        readerPoinDiv.innerHTML = '';
+                        readerPoinDiv.classList.remove('hidden');
+                    }
+                    if(detailSiswaPoinContainer) detailSiswaPoinContainer.classList.add('hidden');
+                    if(searchInputPoin) searchInputPoin.value = '';
+                    if(searchResultsPoinContainer) searchResultsPoinContainer.classList.add('hidden');
+
+
+                    if (typeof Html5Qrcode !== 'undefined') {
+                        if (!html5QrCodePoinInstance) {
+                            html5QrCodePoinInstance = new Html5Qrcode("readerPoin");
+                        }
+                        const qrCodeSuccessPoinCallback = async (decodedText, decodedResult) => {
+                            clearTimeout(attendanceActivityTimeoutId);
+                            if(scannerStatusPoin) scannerStatusPoin.textContent = `Kode terdeteksi: ${decodedText}. Mencari data...`;
+                            if(stopScannerPoinBtn) stopScannerPoinBtn.classList.add('hidden');
+                            if(scannerInstructionPoin) scannerInstructionPoin.textContent = "Kode ditemukan. Mencari data...";
+                            if (html5QrCodePoinInstance && html5QrCodePoinInstance.isScanning) {
+                                try { await html5QrCodePoinInstance.stop(); } catch(err) { console.warn("Gagal stop Poin scanner:", err); }
+                            }
+                            if(readerPoinDiv) readerPoinDiv.classList.add('hidden');
+                            // if(searchInputPoin) searchInputPoin.value = decodedText; // Tidak perlu set input lagi
+                            if(scanPoinContainer) scanPoinContainer.classList.add('hidden');
+                            // if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.remove('hidden'); // Biarkan hidden, langsung tampilkan detail
+                            cariSiswaUntukTukarPoin(decodedText, true); // true untuk menandakan dari scan
+                        };
+                        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+                        html5QrCodePoinInstance.start({ facingMode: "environment" }, config, qrCodeSuccessPoinCallback)
+                            .then(() => {
+                                if(scannerStatusPoin) scannerStatusPoin.textContent = "Arahkan QR code siswa ke kamera.";
+                                if(scannerInstructionPoin) scannerInstructionPoin.textContent = "Arahkan QR code siswa ke kamera.";
+                                if(stopScannerPoinBtn) stopScannerPoinBtn.classList.remove('hidden');
+                                startAttendanceInactivityTimer();
+                            })
+                            .catch(err => {
+                                console.error("Gagal memulai Poin scanner:", err);
+                                if(scannerStatusPoin) scannerStatusPoin.textContent = "Gagal memulai scanner. Pastikan izin kamera diberikan.";
+                                clearTimeout(attendanceActivityTimeoutId);
+                            });
+                    } else {
+                        if(scannerStatusPoin) scannerStatusPoin.textContent = "Fitur pindai tidak tersedia.";
+                    }
+                });
+            }
+
+            if(stopScannerPoinBtn){
+                stopScannerPoinBtn.addEventListener('click', () => {
+                    if (html5QrCodePoinInstance && html5QrCodePoinInstance.isScanning) {
+                        html5QrCodePoinInstance.stop()
+                            .then(() => {
+                                if(scannerStatusPoin) scannerStatusPoin.textContent = "Pindai dihentikan.";
+                                stopScannerPoinBtn.classList.add('hidden');
+                                if(readerPoinDiv) readerPoinDiv.classList.add('hidden');
+                                if(scannerInstructionPoin) scannerInstructionPoin.textContent = "Arahkan QR code siswa ke kamera.";
+                                if(scanPoinContainer) scanPoinContainer.classList.add('hidden');
+                                if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.remove('hidden');
+                                clearTimeout(attendanceActivityTimeoutId);
+                            })
+                            .catch(err => console.warn("Error stopping Poin scanner:", err));
+                    }
+                });
+            }
+            const btnProsesTukarPoinEl = document.getElementById('btnProsesTukarPoin');
+            if(btnProsesTukarPoinEl) btnProsesTukarPoinEl.addEventListener('click', prosesTukarPoin);
+
+            const btnBatalTukarPoinEl = document.getElementById('btnBatalTukarPoin');
+            if(btnBatalTukarPoinEl) btnBatalTukarPoinEl.addEventListener('click', () => resetPenukaranPoinUI(false));
+        }
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            const btnTambahSiswaEl = document.getElementById('btnTambahSiswa');
+            if(btnTambahSiswaEl) {
+                 btnTambahSiswaEl.addEventListener('click', async () => {
+                    if (!isAuthReady || !db) {
+                        showCustomAlert("Database belum siap untuk membuat kode siswa.", "warning");
+                        return;
+                    }
+                    const formTitle = document.getElementById('formSiswaTitle');
+                    if(formTitle) formTitle.textContent = 'Tambah Siswa Baru';
+                    const formSiswa = document.getElementById('formSiswa');
+                    if(formSiswa) formSiswa.reset();
+                    const lulusCheckbox = document.getElementById('lulus');
+                    if(lulusCheckbox) lulusCheckbox.checked = false;
+
+                    const kodeInput = document.getElementById('kode');
+                    const siswaCollectionRef = collection(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`);
+
+                    try {
+                        const qLulus = query(siswaCollectionRef, where("lulus", "==", true));
+                        const lulusSnapshot = await getDocs(qLulus);
+                        let kodeUntukSiswaBaru = "";
+                        let isReusingCode = false;
+                        let reusedSiswaData = null;
+
+                        if (!lulusSnapshot.empty) {
+                            const lulusan = [];
+                            lulusSnapshot.forEach(doc => lulusan.push(doc.data()));
+                            lulusan.sort((a,b) => {
+                                const numA = parseInt(a.kode.substring(6), 10); // PKIDS-XXXXX -> XXXXX
+                                const numB = parseInt(b.kode.substring(6), 10);
+                                return numA - numB;
+                            });
+                            kodeUntukSiswaBaru = lulusan[0].kode;
+                            reusedSiswaData = lulusan[0];
+                            isReusingCode = true;
+                            console.log("DEBUG: Reusing code from graduated student:", kodeUntukSiswaBaru);
+                            if(document.getElementById('nama')) document.getElementById('nama').value = ''; // Kosongkan nama jika pakai ulang
+                            if(document.getElementById('nama_alias')) document.getElementById('nama_alias').value = '';
+                        } else {
+                            const allSiswaSnapshot = await getDocs(siswaCollectionRef);
+                            let maxNumericPart = 0;
+                            allSiswaSnapshot.forEach((doc) => {
+                                const currentKode = doc.data().kode;
+                                if (currentKode && currentKode.startsWith('PKIDS-')) {
+                                    const numericPartStr = currentKode.substring(6);
+                                    const numericPart = parseInt(numericPartStr, 10);
+                                    if (!isNaN(numericPart) && numericPart > maxNumericPart) {
+                                        maxNumericPart = numericPart;
+                                    }
+                                }
+                            });
+
+                            const nextNumericPart = maxNumericPart + 1;
+                            if (nextNumericPart > MAX_SISWA_KODE) {
+                                showCustomAlert(`Nomor kode siswa sudah mencapai batas maksimal (${MAX_SISWA_KODE}). Tidak bisa menambah siswa baru.`, "error");
+                                return;
+                            }
+                            const formattedNumericPart = String(nextNumericPart).padStart(5, '0');
+                            kodeUntukSiswaBaru = `PKIDS-${formattedNumericPart}`;
+                            console.log("DEBUG: Generating new code:", kodeUntukSiswaBaru);
+                        }
+
+                        if(kodeInput) {
+                            kodeInput.value = kodeUntukSiswaBaru;
+                            kodeInput.readOnly = true;
+                            kodeInput.classList.add('bg-gray-100');
+                        }
+                        const tglMasukEl = document.getElementById('tanggal_masuk');
+                        if(tglMasukEl) tglMasukEl.valueAsDate = new Date();
+                        const poinEl = document.getElementById('poin');
+                        if(poinEl) poinEl.value = 0;
+                        if(lulusCheckbox) lulusCheckbox.checked = false;
+
+                        if (isReusingCode && reusedSiswaData) {
+                            // Isi beberapa field yang mungkin relevan, tapi biarkan nama kosong
+                            if(document.getElementById('jenis')) document.getElementById('jenis').value = reusedSiswaData.jenis || 'Laki-laki';
+                            // Biarkan tanggal lahir, nik, nama ortu, alamat, kota, no hp kosong atau dari data lama jika diinginkan
+                            // For example: document.getElementById('tanggal_lahir').value = reusedSiswaData.tanggal_lahir || '';
+                        }
+                        openModal('formSiswaModal');
+
+                    } catch (error) {
+                        console.error("Error preparing new student form: ", error);
+                        showCustomAlert("Gagal mempersiapkan form siswa baru. Coba lagi.", "error");
+                        if(kodeInput) {
+                            kodeInput.readOnly = false;
+                            kodeInput.classList.remove('bg-gray-100');
+                        }
+                        openModal('formSiswaModal');
+                    }
+                });
+            }
+
+
+            const formSiswaEl = document.getElementById('formSiswa');
+            if(formSiswaEl) formSiswaEl.addEventListener('submit', handleFormSiswaSubmit);
+
+            const searchNamaInput = document.getElementById('searchNamaSiswa');
+            const searchResultsContainer = document.getElementById('searchResultsContainer');
+            const kodeSiswaAbsenInput = document.getElementById('kodeSiswaAbsen');
+            const btnAbsenManualEl = document.getElementById('btnAbsenManual');
+
+            if(searchNamaInput) {
+                searchNamaInput.addEventListener('input', () => {
+                    startAttendanceInactivityTimer();
+                    const searchTerm = searchNamaInput.value.trim().toLowerCase();
+                    clearTimeout(searchDebounceTimeout);
+
+                    if (searchTerm.length < 3) {
+                        if(searchResultsContainer) {
+                            searchResultsContainer.innerHTML = '';
+                            searchResultsContainer.classList.add('hidden');
+                        }
+                        return;
+                    }
+                    searchDebounceTimeout = setTimeout(async () => {
+                        if (!isAuthReady || !db) { showCustomAlert("Database belum siap.", "warning"); return; }
+                        if(searchResultsContainer) {
+                            searchResultsContainer.innerHTML = '<div class="search-result-item text-gray-500">Mencari...</div>';
+                            searchResultsContainer.classList.remove('hidden');
+                        }
+                        try {
+                            const qSnapshot = await getDocs(query(collection(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`), where("lulus", "==", false)));
+                            const results = [];
+                            qSnapshot.forEach(doc => {
+                                const siswa = doc.data();
+                                if (siswa.nama.toLowerCase().includes(searchTerm)) {
+                                    results.push({ nama: siswa.nama, kode: siswa.kode });
+                                }
+                            });
+                            if(searchResultsContainer) searchResultsContainer.innerHTML = '';
+                            if (results.length > 0) {
+                                results.forEach(s => {
+                                    const item = document.createElement('div');
+                                    item.classList.add('search-result-item');
+                                    item.textContent = `${s.nama} (Kode: ${s.kode})`;
+                                    item.onclick = () => {
+                                        if(kodeSiswaAbsenInput) kodeSiswaAbsenInput.value = s.kode;
+                                        if(searchNamaInput) searchNamaInput.value = s.nama; // Isi juga nama
+                                        if(searchResultsContainer) searchResultsContainer.classList.add('hidden');
+                                        startAttendanceInactivityTimer();
+                                    };
+                                    if(searchResultsContainer) searchResultsContainer.appendChild(item);
+                                });
+                            } else { if(searchResultsContainer) searchResultsContainer.innerHTML = '<div class="search-result-item text-gray-500">Nama tidak ditemukan atau siswa sudah lulus.</div>'; }
+                        } catch (e) { console.error(e); if(searchResultsContainer) searchResultsContainer.innerHTML = '<div class="search-result-item text-red-500">Gagal mencari.</div>'; }
+                    }, 500);
+                });
+            }
+            if(kodeSiswaAbsenInput) kodeSiswaAbsenInput.addEventListener('input', startAttendanceInactivityTimer);
+            if(btnAbsenManualEl) {
+                btnAbsenManualEl.addEventListener('click', () => {
+                    clearTimeout(attendanceActivityTimeoutId);
+                    attendanceActivityTimeoutId = null;
+                    prosesAbsenManual();
+                });
+            }
+        }
+
+        // --- Data Loading Functions ---
+        async function loadDataSiswa() {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+            const tabelDataSiswa = document.getElementById('tabelDataSiswa');
+            if (!tabelDataSiswa) return;
+            tabelDataSiswa.innerHTML = '<tr><td colspan="6" class="text-center py-4">Memuat data siswa...</td></tr>';
+
+            try {
+                const siswaCollectionRef = collection(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`);
+                // const querySnapshot = await getDocs(query(siswaCollectionRef, orderBy("nama"))); // Urutkan berdasarkan nama
+                const querySnapshot = await getDocs(siswaCollectionRef); // Ambil semua, urutkan di client
+
+                if (querySnapshot.empty) {
+                    tabelDataSiswa.innerHTML = '<tr><td colspan="6" class="text-center py-4">Belum ada data siswa.</td></tr>';
+                    return;
+                }
+
+                const siswaList = [];
+                querySnapshot.forEach((doc) => {
+                    siswaList.push({ id: doc.id, ...doc.data() });
+                });
+                // Urutkan di client side berdasarkan nama
+                siswaList.sort((a, b) => a.nama.localeCompare(b.nama));
+
+
+                let rows = '';
+                siswaList.forEach((siswa) => {
+                    const statusLulus = siswa.lulus ? '<span class="text-red-500 font-semibold">Lulus</span>' : '<span class="text-green-500 font-semibold">Aktif</span>';
+                    rows += `
+                        <tr id="siswa-row-${siswa.id}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${siswa.kode}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${siswa.nama}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${siswa.poin || 0}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${siswa.no_hp || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${statusLulus}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <button onclick="editSiswa('${siswa.id}')" class="text-indigo-600 hover:text-indigo-900">Edit</button>
+                                <button onclick="hapusSiswa('${siswa.id}')" class="text-red-600 hover:text-red-900">Hapus</button>
+                                <button onclick="tampilkanKartuSiswa('${siswa.id}')" class="text-teal-600 hover:text-teal-900">Kartu</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tabelDataSiswa.innerHTML = rows;
+            } catch (error) {
+                console.error("Error loading data siswa: ", error);
+                tabelDataSiswa.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Gagal memuat data siswa.</td></tr>';
+                showCustomAlert("Gagal memuat data siswa.", "error");
+            }
+        }
+
+        async function loadLaporanAbsensi() {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+            const tabelLaporanAbsensi = document.getElementById('tabelLaporanAbsensi');
+            if(!tabelLaporanAbsensi) return;
+            tabelLaporanAbsensi.innerHTML = '<tr><td colspan="5" class="text-center py-4">Memuat laporan absensi...</td></tr>';
+
+            const filterTanggalInput = document.getElementById('filterTanggalLaporan');
+            const filterTanggal = filterTanggalInput ? filterTanggalLaporan.value : null;
+
+
+            try {
+                const absensiCollectionRef = collection(db, `artifacts/${appId}/public/data/${absensiCollectionName}`);
+                let q = query(absensiCollectionRef, orderBy("tanggal_absen", "desc")); // Default order, will be filtered later
+
+                const querySnapshot = await getDocs(q);
+
+                let absensiData = [];
+                querySnapshot.forEach(doc => absensiData.push(doc.data()));
+
+                if (filterTanggal) {
+                    const startDate = new Date(filterTanggal);
+                    startDate.setHours(0, 0, 0, 0);
+                    const endDate = new Date(filterTanggal);
+                    endDate.setHours(23, 59, 59, 999);
+
+                    absensiData = absensiData.filter(absen => {
+                        const absenDate = absen.tanggal_absen.toDate();
+                        return absenDate >= startDate && absenDate <= endDate;
+                    });
+                }
+
+                if (absensiData.length === 0) {
+                     tabelLaporanAbsensi.innerHTML = `<tr><td colspan="5" class="text-center py-4">Belum ada data absensi ${filterTanggal ? 'untuk tanggal '+new Date(filterTanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'keseluruhan'}.</td></tr>`;
+                    return;
+                }
+                // Sort after filtering (if any)
+                absensiData.sort((a, b) => {
+                    const dateA = a.tanggal_absen.toDate();
+                    const dateB = b.tanggal_absen.toDate();
+                    if (dateA.getTime() === dateB.getTime()) {
+                        return b.jam_absen.localeCompare(a.jam_absen); // Jam terbaru dulu
+                    }
+                    return dateB.getTime() - dateA.getTime(); // Tanggal terbaru dulu
+                });
+
+
+                let rows = '';
+                absensiData.forEach((absen) => {
+                    const tanggal = absen.tanggal_absen.toDate().toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'});
+                    rows += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${tanggal}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${absen.jam_absen}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${absen.kode_siswa}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${absen.nama_siswa}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${absen.status}</td>
+                        </tr>
+                    `;
+                });
+                tabelLaporanAbsensi.innerHTML = rows;
+            } catch (error) {
+                console.error("Error loading laporan absensi: ", error);
+                tabelLaporanAbsensi.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Gagal memuat laporan absensi.</td></tr>';
+                showCustomAlert("Gagal memuat laporan absensi.", "error");
+            }
+        }
+
+        // --- Fungsi Hapus Laporan Lama (Absensi) ---
+        async function hapusLaporanLama() {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap untuk menghapus laporan.", "warning");
+                return;
+            }
+
+            const confirmed = window.confirm("Yakin ingin menghapus semua data laporan absensi yang lebih lama dari 3 bulan (dihitung dari awal bulan ini)? Tindakan ini tidak bisa diurungkan.");
+            if (!confirmed) {
+                return;
+            }
+
+            showCustomAlert("Menghapus laporan absensi lama...", "info", 10000);
+
+            try {
+                const today = new Date();
+                const firstDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const cutoffDate = new Date(firstDayOfCurrentMonth);
+                cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+                const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
+
+                console.log("DEBUG: Batas waktu penghapusan laporan absensi (sebelum tanggal ini):", cutoffDate.toISOString());
+
+                const absensiCollectionRef = collection(db, `artifacts/${appId}/public/data/${absensiCollectionName}`);
+                const q = query(absensiCollectionRef, where("tanggal_absen", "<", cutoffTimestamp));
+
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    showCustomAlert("Tidak ada data laporan absensi yang lebih lama dari 3 bulan (dari awal bulan ini) untuk dihapus.", "info");
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                let count = 0;
+                querySnapshot.forEach((docSnapshot) => {
+                    batch.delete(docSnapshot.ref);
+                    count++;
+                });
+
+                await batch.commit();
+                showCustomAlert(`${count} data laporan absensi lama berhasil dihapus.`, "success");
+                loadLaporanAbsensi();
+            } catch (error) {
+                console.error("Error deleting old attendance reports: ", error);
+                showCustomAlert(`Gagal menghapus laporan absensi lama: ${error.message}`, "error");
+            }
+        }
+
+        // --- LAPORAN PENUKARAN POIN ---
+        async function loadLaporanPenukaranPoin() {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+            const tabelLaporan = document.getElementById('tabelLaporanPenukaranPoin');
+            if (!tabelLaporan) {
+                console.error("Elemen tabelLaporanPenukaranPoin tidak ditemukan.");
+                return;
+            }
+            tabelLaporan.innerHTML = '<tr><td colspan="7" class="text-center py-4">Memuat laporan penukaran poin...</td></tr>';
+
+            const filterTanggalInput = document.getElementById('filterTanggalLaporanPoin');
+            const filterTanggal = filterTanggalInput ? filterTanggalInput.value : null;
+
+            try {
+                const logCollectionRef = collection(db, `artifacts/${appId}/public/data/${penukaranPoinLogCollectionName}`);
+                let q = query(logCollectionRef, orderBy("tanggal_penukaran", "desc")); // Urutkan terbaru dulu
+
+                const querySnapshot = await getDocs(q);
+
+                let logDataArray = [];
+                querySnapshot.forEach(doc => {
+                    logDataArray.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (filterTanggal) {
+                    const startDate = new Date(filterTanggal);
+                    startDate.setHours(0, 0, 0, 0);
+                    const endDate = new Date(filterTanggal);
+                    endDate.setHours(23, 59, 59, 999);
+
+                    logDataArray = logDataArray.filter(log => {
+                        const logDate = log.tanggal_penukaran.toDate();
+                        return logDate >= startDate && logDate <= endDate;
+                    });
+                }
+
+                if (logDataArray.length === 0) {
+                    tabelLaporan.innerHTML = `<tr><td colspan="7" class="text-center py-4">Belum ada data penukaran poin ${filterTanggal ? 'untuk tanggal '+new Date(filterTanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'keseluruhan'}.</td></tr>`;
+                    return;
+                }
+                // Tidak perlu sort lagi karena sudah di-query dengan orderBy dan filter di client
+
+                let rows = '';
+                logDataArray.forEach((log) => {
+                    const tanggal = log.tanggal_penukaran.toDate().toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'});
+                    rows += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${tanggal}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.jam_penukaran}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.kode_siswa}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.nama_siswa}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">${log.poin_ditukar}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${log.sisa_poin_saat_itu}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" title="${log.userID_pencatat}">${log.userID_pencatat ? log.userID_pencatat.substring(0,10)+'...' : '-'}</td>
+                        </tr>
+                    `;
+                });
+                tabelLaporan.innerHTML = rows;
+            } catch (error) {
+                console.error("Error loading laporan penukaran poin: ", error);
+                tabelLaporan.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Gagal memuat laporan penukaran poin.</td></tr>';
+                showCustomAlert("Gagal memuat laporan penukaran poin.", "error");
+            }
+        }
+
+        async function hapusLaporanPoinLama() {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap untuk menghapus laporan.", "warning");
+                return;
+            }
+
+            const confirmed = window.confirm("Yakin ingin menghapus semua data laporan penukaran poin yang lebih lama dari 3 bulan (dihitung dari awal bulan ini)? Tindakan ini tidak bisa diurungkan.");
+            if (!confirmed) {
+                return;
+            }
+
+            showCustomAlert("Menghapus laporan penukaran poin lama...", "info", 10000);
+
+            try {
+                const today = new Date();
+                const firstDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const cutoffDate = new Date(firstDayOfCurrentMonth);
+                cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+                const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
+
+                console.log("DEBUG: Batas waktu penghapusan laporan poin (sebelum tanggal ini):", cutoffDate.toISOString());
+
+                const logCollectionRef = collection(db, `artifacts/${appId}/public/data/${penukaranPoinLogCollectionName}`);
+                const q = query(logCollectionRef, where("tanggal_penukaran", "<", cutoffTimestamp));
+
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    showCustomAlert("Tidak ada data laporan penukaran poin yang lebih lama dari 3 bulan untuk dihapus.", "info");
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                let count = 0;
+                querySnapshot.forEach((docSnapshot) => {
+                    batch.delete(docSnapshot.ref);
+                    count++;
+                });
+
+                await batch.commit();
+                showCustomAlert(`${count} data laporan penukaran poin lama berhasil dihapus.`, "success");
+                loadLaporanPenukaranPoin(); // Muat ulang laporan setelah penghapusan
+            } catch (error) {
+                console.error("Error deleting old point redemption reports: ", error);
+                showCustomAlert(`Gagal menghapus laporan poin lama: ${error.message}`, "error");
+            }
+        }
+
+
+        // --- CRUD Siswa Functions ---
+        async function handleFormSiswaSubmit(event) {
+            event.preventDefault();
+            console.log("handleFormSiswaSubmit: Form submitted.");
+
+            const btnSimpan = document.getElementById('btnSimpanSiswa');
+            try {
+                if(btnSimpan) {
+                    btnSimpan.disabled = true;
+                    btnSimpan.textContent = 'Menyimpan...';
+                }
+
+                if (!isAuthReady || !db) {
+                    showCustomAlert("Database belum siap. Tidak dapat menyimpan data.", "error");
+                    throw new Error("Firebase services not ready.");
+                }
+
+                const formData = new FormData(event.target);
+                const siswaData = Object.fromEntries(formData.entries());
+
+                siswaData.poin = parseInt(siswaData.poin) || 0;
+                siswaData.lulus = document.getElementById('lulus') ? document.getElementById('lulus').checked : false;
+
+                if (!siswaData.nama || !siswaData.jenis || !siswaData.tanggal_masuk) {
+                    showCustomAlert("Field Nama, Jenis Kelamin, dan Tanggal Masuk wajib diisi.", "error");
+                    throw new Error("Validation failed: Required fields missing.");
+                }
+                 if (!siswaData.kode) {
+                    showCustomAlert("Kode siswa tidak ada. Gagal menyimpan.", "error");
+                    throw new Error("Validation failed: Kode siswa missing.");
+                }
+
+                siswaData.fotoUrl = ''; // Atau URL foto jika ada
+
+                console.log("handleFormSiswaSubmit: Final siswaData before Firestore:", siswaData);
+
+                const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, siswaData.kode);
+
+                await setDoc(siswaDocRef, siswaData, { merge: true });
+
+                const formTitleEl = document.getElementById('formSiswaTitle');
+                if (formTitleEl && formTitleEl.textContent.includes('Tambah')) {
+                     showCustomAlert("Siswa baru berhasil ditambahkan/diperbarui.", "success");
+                } else {
+                     showCustomAlert("Data siswa berhasil diperbarui.", "success");
+                }
+
+                closeModal('formSiswaModal');
+                loadDataSiswa();
+                console.log("handleFormSiswaSubmit: Process completed successfully.");
+
+            } catch (error) {
+                console.error("handleFormSiswaSubmit: Error during submission process (outer catch): ", error);
+                if (!error.message.includes("Validation failed") && !error.message.includes("Firebase services not ready")) {
+                     showCustomAlert(`Gagal menyimpan data siswa: ${error.message}`, "error");
+                }
+            } finally {
+                if(btnSimpan) {
+                    btnSimpan.disabled = false;
+                    btnSimpan.textContent = 'Simpan';
+                }
+                console.log("handleFormSiswaSubmit: Button re-enabled, text reset to Simpan (in finally block).");
+            }
+        }
+
+        window.editSiswa = async function(kodeSiswa) {
+            if (!isAuthReady || !db) return;
+            const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, kodeSiswa);
+            try {
+                const docSnap = await getDoc(siswaDocRef);
+                if (docSnap.exists()) {
+                    const siswa = docSnap.data();
+                    const formTitle = document.getElementById('formSiswaTitle');
+                    if(formTitle) formTitle.textContent = 'Edit Data Siswa';
+                    const formSiswa = document.getElementById('formSiswa');
+                    if(formSiswa) formSiswa.reset();
+
+                    const kodeInput = document.getElementById('kode');
+                    if(kodeInput) {
+                        kodeInput.value = siswa.kode;
+                        kodeInput.readOnly = true;
+                        kodeInput.classList.add('bg-gray-100');
+                    }
+
+                    if(document.getElementById('nama')) document.getElementById('nama').value = siswa.nama;
+                    if(document.getElementById('nama_alias')) document.getElementById('nama_alias').value = siswa.nama_alias || '';
+                    if(document.getElementById('jenis')) document.getElementById('jenis').value = siswa.jenis;
+                    if(document.getElementById('tanggal_lahir')) document.getElementById('tanggal_lahir').value = siswa.tanggal_lahir || '';
+                    if(document.getElementById('nik')) document.getElementById('nik').value = siswa.nik || '';
+                    if(document.getElementById('nama_ayah')) document.getElementById('nama_ayah').value = siswa.nama_ayah || '';
+                    if(document.getElementById('nama_ibu')) document.getElementById('nama_ibu').value = siswa.nama_ibu || '';
+                    if(document.getElementById('alamat')) document.getElementById('alamat').value = siswa.alamat || '';
+                    if(document.getElementById('kota')) document.getElementById('kota').value = siswa.kota || '';
+                    if(document.getElementById('no_hp')) document.getElementById('no_hp').value = siswa.no_hp || '';
+                    if(document.getElementById('tanggal_masuk')) document.getElementById('tanggal_masuk').value = siswa.tanggal_masuk;
+                    if(document.getElementById('poin')) document.getElementById('poin').value = siswa.poin || 0;
+                    if(document.getElementById('lulus')) document.getElementById('lulus').checked = siswa.lulus || false;
+
+                    openModal('formSiswaModal');
+                } else {
+                    showCustomAlert("Data siswa tidak ditemukan.", "error");
+                }
+            } catch (error) {
+                console.error("Error fetching siswa for edit: ", error);
+                showCustomAlert("Gagal memuat data siswa untuk diedit.", "error");
+            }
+        }
+
+        window.hapusSiswa = async function(kodeSiswa) {
+            if (!isAuthReady || !db ) {
+                 showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+
+            const confirmed = window.confirm(`Yakin ingin menghapus siswa ${kodeSiswa}? Data yang sudah dihapus tidak bisa dikembalikan.`);
+            if (!confirmed) return;
+
+            try {
+                const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, kodeSiswa);
+                await deleteDoc(siswaDocRef);
+                showCustomAlert(`Siswa dengan kode ${kodeSiswa} berhasil dihapus dari database.`, "success");
+                loadDataSiswa();
+            } catch (error) {
+                console.error("Error deleting siswa: ", error);
+                showCustomAlert(`Gagal menghapus siswa: ${error.message}`, "error");
+            }
+        }
+
+        // --- Absensi Functions ---
+        async function prosesAbsenManual() {
+            const kodeSiswaInput = document.getElementById('kodeSiswaAbsen');
+            if (!kodeSiswaInput) return;
+            const kodeSiswa = kodeSiswaInput.value.trim();
+            await prosesAbsensi(kodeSiswa);
+        }
+
+        async function prosesAbsenOtomatis(kodeSiswa) {
+            await prosesAbsensi(kodeSiswa, true); // true menandakan ini dari scan
+        }
+
+        async function prosesAbsensi(kodeSiswa, dariScan = false) {
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+
+            const absensiMessage = document.getElementById('absensiMessage');
+            const scannerStatus = document.getElementById('scannerStatus');
+
+            if(absensiMessage) {
+                absensiMessage.innerHTML = '';
+                absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem]';
+            }
+            if (dariScan && scannerStatus) {
+                scannerStatus.textContent = `Memproses kode: ${kodeSiswa}...`;
+            }
+
+            if (!kodeSiswa) {
+                const msg = 'Kode siswa tidak boleh kosong.';
+                if(absensiMessage) {
+                    absensiMessage.textContent = msg;
+                    absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                }
+                if (dariScan && scannerStatus) scannerStatus.textContent = msg;
+                return;
+            }
+
+            try {
+                const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, kodeSiswa);
+                const siswaSnapshot = await getDoc(siswaDocRef);
+
+                if (!siswaSnapshot.exists()) {
+                    const msg = `Siswa dengan kode '${kodeSiswa}' tidak ditemukan.`;
+                    if(absensiMessage) {
+                        absensiMessage.textContent = msg;
+                        absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                    }
+                    if (dariScan) {
+                        if(scannerStatus) scannerStatus.textContent = msg;
+                        const btnPilihAbsenScanEl = document.getElementById('btnPilihAbsenScan');
+                        if(btnPilihAbsenScanEl) setTimeout(() => btnPilihAbsenScanEl.click(), 3000);
+                    }
+                    return;
+                }
+
+                const siswaData = siswaSnapshot.data();
+                const siswaDocId = siswaSnapshot.id;
+
+                if (siswaData.lulus === true) {
+                    const msg = `Siswa dengan kode '${kodeSiswa}' (${siswaData.nama}) sudah berstatus lulus dan tidak bisa absen.`;
+                    if(absensiMessage) {
+                        absensiMessage.textContent = msg;
+                        absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-orange-600';
+                    }
+                    if (dariScan) {
+                        if(scannerStatus) scannerStatus.textContent = msg;
+                        const btnPilihAbsenScanEl = document.getElementById('btnPilihAbsenScan');
+                        if(btnPilihAbsenScanEl) setTimeout(() => btnPilihAbsenScanEl.click(), 4000);
+                    }
+                    return;
+                }
+
+                const today = new Date();
+                const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+                const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+                const absensiCollectionRef = collection(db, `artifacts/${appId}/public/data/${absensiCollectionName}`);
+                const qAbsen = query(absensiCollectionRef, where("kode_siswa", "==", kodeSiswa));
+                const absenSnapshot = await getDocs(qAbsen);
+
+                let sudahAbsenHariIni = false;
+                if (!absenSnapshot.empty) {
+                    absenSnapshot.forEach(doc => {
+                        const absenData = doc.data();
+                        const tanggalAbsenDoc = absenData.tanggal_absen.toDate();
+                        if (tanggalAbsenDoc >= startOfDay && tanggalAbsenDoc <= endOfDay) {
+                            sudahAbsenHariIni = true;
+                        }
+                    });
+                }
+
+                if (sudahAbsenHariIni) {
+                    const msg = `${siswaData.nama} (Kode: ${kodeSiswa}) sudah melakukan absensi hari ini.`;
+                    if(absensiMessage) {
+                        absensiMessage.textContent = msg;
+                        absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-yellow-600';
+                    }
+                    if (dariScan) {
+                        if(scannerStatus) scannerStatus.textContent = msg;
+                         const btnPilihAbsenScanEl = document.getElementById('btnPilihAbsenScan');
+                        if(btnPilihAbsenScanEl) setTimeout(() => btnPilihAbsenScanEl.click(), 3000);
+                    }
+                    return;
+                }
+
+                const siswaDocumentRefToUpdate = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, siswaDocId);
+                const currentPoin = siswaData.poin || 0;
+                const newPoin = currentPoin + 1;
+                await updateDoc(siswaDocumentRefToUpdate, { poin: newPoin });
+                console.log(`Poin untuk siswa ${siswaData.nama} diperbarui menjadi ${newPoin}`);
+
+                const now = new Date();
+                const absensiDataNew = {
+                    kode_siswa: kodeSiswa,
+                    nama_siswa: siswaData.nama,
+                    tanggal_absen: Timestamp.fromDate(now),
+                    jam_absen: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit'}),
+                    status: "Hadir"
+                };
+                await addDoc(absensiCollectionRef, absensiDataNew);
+
+                const successMsg = `<strong>${siswaData.nama}</strong>, absen berhasil! Kamu mendapatkan 1 poin, tetap semangat di dalam Tuhan.`;
+                if(absensiMessage) {
+                    absensiMessage.innerHTML = successMsg;
+                    absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-green-600 font-semibold';
+                }
+
+                if (dariScan) {
+                    if(scannerStatus) scannerStatus.innerHTML = successMsg;
+                    const btnPilihAbsenScanEl = document.getElementById('btnPilihAbsenScan');
+                    if(btnPilihAbsenScanEl) setTimeout(() => btnPilihAbsenScanEl.click(), 5000);
+                } else {
+                    const kodeSiswaAbsenEl = document.getElementById('kodeSiswaAbsen');
+                    if(kodeSiswaAbsenEl) kodeSiswaAbsenEl.value = '';
+                    const searchNamaSiswaEl = document.getElementById('searchNamaSiswa');
+                    if(searchNamaSiswaEl) searchNamaSiswaEl.value = '';
+                    const searchResultsContainerEl = document.getElementById('searchResultsContainer');
+                    if(searchResultsContainerEl) searchResultsContainerEl.classList.add('hidden');
+
+
+                    if (manualAttendanceSuccessTimeoutId) clearTimeout(manualAttendanceSuccessTimeoutId);
+                    manualAttendanceSuccessTimeoutId = setTimeout(() => {
+                        if(absensiMessage) {
+                            absensiMessage.textContent = '';
+                            absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem]';
+                        }
+                        const absenManualContainerEl = document.getElementById('absenManualContainer');
+                        if(absenManualContainerEl) absenManualContainerEl.classList.add('hidden');
+                        const btnPilihAbsenManualEl = document.getElementById('btnPilihAbsenManual');
+                        if(btnPilihAbsenManualEl) btnPilihAbsenManualEl.classList.remove('active');
+                        manualAttendanceSuccessTimeoutId = null;
+                        clearTimeout(attendanceActivityTimeoutId);
+                        attendanceActivityTimeoutId = null;
+                    }, 60000); // Reset setelah 1 menit jika tidak ada aktivitas lagi
+                }
+
+                const laporanAbsensiSubSectionEl = document.getElementById('laporanAbsensiSubSection');
+                if (laporanAbsensiSubSectionEl && laporanAbsensiSubSectionEl.offsetParent !== null) {
+                    loadLaporanAbsensi();
+                    loadDataSiswa(); // Untuk update poin di tabel siswa jika ditampilkan
+                }
+            } catch (error) {
+                console.error("Error proses absensi: ", error);
+                const errorMsg = `Gagal memproses absensi: ${error.message}`;
+                if(absensiMessage) {
+                    absensiMessage.textContent = errorMsg;
+                    absensiMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                }
+                if (dariScan) {
+                    if(scannerStatus) scannerStatus.textContent = errorMsg;
+                    const btnPilihAbsenScanEl = document.getElementById('btnPilihAbsenScan');
+                    if(btnPilihAbsenScanEl) setTimeout(() => btnPilihAbsenScanEl.click(), 5000);
+                }
+            }
+        }
+
+        // --- Fungsi untuk Penukaran Poin ---
+        async function cariSiswaUntukTukarPoin(kodeSiswa, dariScan = false) {
+            startAttendanceInactivityTimer();
+            if (!isAuthReady || !db) {
+                showCustomAlert("Database belum siap.", "warning");
+                return;
+            }
+            const detailContainer = document.getElementById('detailSiswaPoinContainer');
+            const penukaranPoinMessage = document.getElementById('penukaranPoinMessage');
+            const scannerStatusPoin = document.getElementById('scannerStatusPoin');
+            // const readerPoinDiv = document.getElementById('readerPoin');
+            // const searchInputPoin = document.getElementById('searchInputPoin');
+            const areaPencarianPoinUtama = document.getElementById('areaPencarianPoinUtama');
+            const scanPoinContainer = document.getElementById('scanPoinContainer');
+
+            if(detailContainer) detailContainer.classList.add('hidden');
+            if(penukaranPoinMessage) penukaranPoinMessage.textContent = '';
+            if(dariScan && scannerStatusPoin) scannerStatusPoin.textContent = 'Mencari data siswa...';
+            else if(penukaranPoinMessage) penukaranPoinMessage.textContent = 'Mencari data siswa...';
+
+
+            try {
+                const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, kodeSiswa);
+                const docSnap = await getDoc(siswaDocRef);
+
+                if (docSnap.exists()) {
+                    const siswa = docSnap.data();
+                    if (siswa.lulus) {
+                        const msg = `Siswa ${siswa.nama} (Kode: ${kodeSiswa}) sudah berstatus lulus dan tidak bisa menukar poin.`;
+                        if(penukaranPoinMessage) {
+                            penukaranPoinMessage.textContent = msg;
+                            penukaranPoinMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-orange-600';
+                        }
+                        if(dariScan) {
+                            if(scannerStatusPoin) scannerStatusPoin.textContent = msg;
+                            if(scanPoinContainer) scanPoinContainer.classList.add('hidden');
+                            if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    if(document.getElementById('detailKodeSiswaPoin')) document.getElementById('detailKodeSiswaPoin').textContent = siswa.kode;
+                    if(document.getElementById('detailNamaSiswaPoin')) document.getElementById('detailNamaSiswaPoin').textContent = siswa.nama;
+                    if(document.getElementById('detailJumlahPoinSiswa')) document.getElementById('detailJumlahPoinSiswa').textContent = siswa.poin || 0;
+                    const poinDitukarEl = document.getElementById('poinDitukar');
+                    if(poinDitukarEl) {
+                        poinDitukarEl.value = '';
+                        poinDitukarEl.max = siswa.poin || 0;
+                    }
+                    if(detailContainer) detailContainer.classList.remove('hidden');
+                    if(areaPencarianPoinUtama && !dariScan) areaPencarianPoinUtama.classList.add('hidden'); // Sembunyikan area cari jika dari manual search
+                    if(scanPoinContainer && dariScan) scanPoinContainer.classList.add('hidden'); // Sembunyikan area scan jika dari scan
+
+                    if(dariScan && scannerStatusPoin) scannerStatusPoin.textContent = 'Data siswa ditemukan. Masukkan poin yang akan ditukar.';
+                    else if(penukaranPoinMessage) penukaranPoinMessage.textContent = 'Data siswa ditemukan. Masukkan poin yang akan ditukar.';
+
+                } else {
+                    const msg = `Siswa dengan kode '${kodeSiswa}' tidak ditemukan.`;
+                    if(penukaranPoinMessage) {
+                        penukaranPoinMessage.textContent = msg;
+                        penukaranPoinMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                    }
+                    if(dariScan) {
+                        if(scannerStatusPoin) scannerStatusPoin.textContent = msg;
+                        if(scanPoinContainer) scanPoinContainer.classList.add('hidden');
+                        if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error("Error mencari siswa untuk tukar poin:", error);
+                const msg = `Gagal mencari data siswa: ${error.message}`;
+                if(penukaranPoinMessage) {
+                    penukaranPoinMessage.textContent = msg;
+                    penukaranPoinMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                }
+                 if(dariScan) {
+                    if(scannerStatusPoin) scannerStatusPoin.textContent = msg;
+                    if(scanPoinContainer) scanPoinContainer.classList.add('hidden');
+                    if(areaPencarianPoinUtama) areaPencarianPoinUtama.classList.remove('hidden');
+                }
+            }
+        }
+
+        async function prosesTukarPoin() {
+            clearTimeout(attendanceActivityTimeoutId);
+            const kodeSiswa = document.getElementById('detailKodeSiswaPoin') ? document.getElementById('detailKodeSiswaPoin').textContent : null;
+            const poinDitukarInput = document.getElementById('poinDitukar');
+            const poinDitukar = poinDitukarInput ? parseInt(poinDitukarInput.value) : 0;
+            const poinDimiliki = document.getElementById('detailJumlahPoinSiswa') ? parseInt(document.getElementById('detailJumlahPoinSiswa').textContent) : 0;
+            const penukaranPoinMessage = document.getElementById('penukaranPoinMessage');
+            const namaSiswaEl = document.getElementById('detailNamaSiswaPoin');
+
+            if (!kodeSiswa || kodeSiswa === '-') {
+                showCustomAlert("Tidak ada data siswa yang dipilih untuk penukaran poin.", "warning");
+                startAttendanceInactivityTimer();
+                return;
+            }
+            if (isNaN(poinDitukar) || poinDitukar <= 0) {
+                showCustomAlert("Jumlah poin yang akan ditukar harus angka positif.", "warning");
+                if(poinDitukarInput) poinDitukarInput.focus();
+                startAttendanceInactivityTimer();
+                return;
+            }
+            if (poinDitukar > poinDimiliki) {
+                showCustomAlert("Poin yang akan ditukar melebihi poin yang dimiliki siswa.", "warning");
+                if(poinDitukarInput) poinDitukarInput.focus();
+                startAttendanceInactivityTimer();
+                return;
+            }
+
+            const namaSiswaSaatIni = namaSiswaEl ? namaSiswaEl.textContent : "Siswa";
+            const confirmed = window.confirm(`Yakin ingin menukar ${poinDitukar} poin untuk siswa ${namaSiswaSaatIni}?`);
+            if (!confirmed) {
+                startAttendanceInactivityTimer();
+                return;
+            }
+
+            showCustomAlert("Memproses penukaran poin...", "info");
+            try {
+                const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, kodeSiswa);
+                const sisaPoin = poinDimiliki - poinDitukar;
+
+                await updateDoc(siswaDocRef, { poin: sisaPoin });
+
+                // Log Penukaran Poin
+                const now = new Date();
+                const logData = {
+                    kode_siswa: kodeSiswa,
+                    nama_siswa: namaSiswaSaatIni,
+                    poin_ditukar: poinDitukar,
+                    sisa_poin_saat_itu: sisaPoin,
+                    tanggal_penukaran: Timestamp.fromDate(now),
+                    jam_penukaran: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit'}),
+                    userID_pencatat: userId // Pastikan userId tersedia
+                };
+                const penukaranLogCollectionRef = collection(db, `artifacts/${appId}/public/data/${penukaranPoinLogCollectionName}`);
+                await addDoc(penukaranLogCollectionRef, logData);
+                console.log("DEBUG: Log penukaran poin berhasil disimpan:", logData);
+
+
+                if(penukaranPoinMessage) {
+                    penukaranPoinMessage.innerHTML = `Poin <strong>${namaSiswaSaatIni}</strong> berhasil ditukar. Sisa poin: <strong>${sisaPoin}</strong>.`;
+                    penukaranPoinMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-green-600 font-semibold';
+                }
+
+                const detailJumlahPoinSiswaEl = document.getElementById('detailJumlahPoinSiswa');
+                if(detailJumlahPoinSiswaEl) detailJumlahPoinSiswaEl.textContent = sisaPoin;
+                if(poinDitukarInput) poinDitukarInput.value = '';
+                if (typeof loadDataSiswa === "function") loadDataSiswa(); // Update tabel siswa jika ditampilkan
+
+                // Refresh laporan penukaran poin jika sedang ditampilkan
+                const laporanPoinSubSection = document.getElementById('laporanPenukaranPoinSubSection');
+                if (laporanPoinSubSection && laporanPoinSubSection.offsetParent !== null) {
+                    loadLaporanPenukaranPoin();
+                }
+
+
+                setTimeout(() => {
+                    resetPenukaranPoinUI(false);
+                }, 5000);
+
+            } catch (error) {
+                console.error("Error menukar poin atau menyimpan log:", error);
+                if(penukaranPoinMessage) {
+                    penukaranPoinMessage.textContent = `Gagal menukar poin: ${error.message}`;
+                    penukaranPoinMessage.className = 'mb-4 text-sm text-center min-h-[1.25rem] text-red-600';
+                }
+                startAttendanceInactivityTimer();
+            }
+        }
+
+
+        // --- Student Card Functions ---
+        window.tampilkanKartuSiswa = async function(idSiswa) {
+            if (!isAuthReady || !db) return;
+            const siswaDocRef = doc(db, `artifacts/${appId}/public/data/${msiswaCollectionName}`, idSiswa);
+            try {
+                const docSnap = await getDoc(siswaDocRef);
+                if (docSnap.exists()) {
+                    const siswa = docSnap.data();
+
+                    const cardNamaEl = document.getElementById('cardNamaSiswaPrint');
+                    const cardKodeEl = document.getElementById('cardKodeSiswaOnCardPrint');
+                    const cardTanggalEl = document.getElementById('cardTanggalBergabungPrint');
+                    const qrContainerEl = document.getElementById('cardQrCodePrint');
+                    const cardLogoPrintEl = document.getElementById('cardLogoPrint');
+
+
+                    if (cardNamaEl) cardNamaEl.textContent = siswa.nama; else console.error("Element cardNamaSiswaPrint not found");
+                    if (cardKodeEl) cardKodeEl.textContent = `KODE: ${siswa.kode}`; else console.error("Element cardKodeSiswaOnCardPrint not found");
+
+                    if(siswa.tanggal_masuk) {
+                        const tglMasuk = new Date(siswa.tanggal_masuk);
+                        if (cardTanggalEl) cardTanggalEl.textContent = `Join: ${tglMasuk.toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'})}`; else console.error("Element cardTanggalBergabungPrint not found");
+                    } else {
+                         if (cardTanggalEl) cardTanggalEl.textContent = `Join: -`;
+                    }
+
+
+                    if (cardLogoPrintEl) {
+                        cardLogoPrintEl.src = `https://absensipkids.netlify.app/img/mahanaim.png?t=${new Date().getTime()}`;
+                        cardLogoPrintEl.onerror = function() {
+                            this.onerror=null;
+                            this.src='https://placehold.co/150x50/003366/FFFFFF?text=Logo%20Sekolah';
+                            console.error('Modal display: Gagal memuat logo sekolah dari Netlify, menggunakan placeholder.');
+                        };
+                    }
+
+                    if (qrContainerEl) {
+                        qrContainerEl.innerHTML = '';
+                        new QRCode(qrContainerEl, {
+                            text: siswa.kode,
+                            width: 60,
+                            height: 60,
+                            colorDark : "#000000",
+                            colorLight : "#ffffff",
+                            correctLevel : QRCode.CorrectLevel.H
+                        });
+                    } else {
+                        console.error("Element cardQrCodePrint not found");
+                    }
+
+                    openModal('studentCardModal');
+                } else {
+                    showCustomAlert("Data siswa tidak ditemukan untuk kartu.", "error");
+                }
+            } catch (error) {
+                console.error("Error fetching siswa for card: ", error);
+                showCustomAlert("Gagal memuat data kartu siswa.", "error");
+            }
+        }
+
+        async function simpanKartuSebagaiGambar() {
+            const elementToCapture = document.querySelector("#studentCardModal .card-print-content");
+            if (!elementToCapture) {
+                showCustomAlert("Elemen kartu tidak ditemukan untuk disimpan.", "error");
+                return;
+            }
+            const cardNamaSiswaPrintEl = document.getElementById('cardNamaSiswaPrint');
+            const siswaNama = cardNamaSiswaPrintEl ? cardNamaSiswaPrintEl.textContent : "kartu-siswa";
+            const fileName = `kartu-${siswaNama.replace(/\s+/g, '-').toLowerCase()}.png`;
+
+            showCustomAlert("Menyimpan kartu sebagai gambar...", "info");
+
+            const modalElement = document.getElementById('studentCardModal');
+            const actionButtonsContainer = modalElement ? modalElement.querySelector('.actions-modal-buttons') : null;
+            const closeButtonModal = modalElement ? modalElement.querySelector('.close-button-modal') : null;
+
+            const originalActionsDisplay = actionButtonsContainer ? actionButtonsContainer.style.display : '';
+            const originalCloseDisplay = closeButtonModal ? closeButtonModal.style.display : '';
+
+            if (actionButtonsContainer) actionButtonsContainer.style.display = 'none';
+            if (closeButtonModal) closeButtonModal.style.display = 'none';
+
+
+            try {
+                const canvas = await html2canvas(elementToCapture, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: true,
+                    onclone: (clonedDoc) => {
+                        const clonedCardContent = clonedDoc.querySelector(".card-print-content");
+                        if (clonedCardContent) {
+                            clonedCardContent.style.fontFamily = 'Arial, sans-serif';
+                            clonedCardContent.style.border = '0.5mm solid #555';
+                            clonedCardContent.style.padding = '2mm';
+                            clonedCardContent.style.width = '54mm';
+                            clonedCardContent.style.height = '86mm';
+                            clonedCardContent.style.display = 'flex';
+                            clonedCardContent.style.flexDirection = 'column';
+                            clonedCardContent.style.alignItems = 'center';
+                            clonedCardContent.style.justifyContent = 'space-between';
+                            clonedCardContent.style.boxSizing = 'border-box';
+                            clonedCardContent.style.backgroundColor = '#ffffff';
+                            clonedCardContent.style.borderRadius = '0px';
+                            clonedCardContent.style.boxShadow = 'none';
+
+                            const header = clonedCardContent.querySelector('.card-header-print');
+                            if(header) {
+                                header.style.width = '100%';
+                                header.style.textAlign = 'center';
+                                header.style.marginBottom = '0.5mm';
+                            }
+                            const logo = clonedCardContent.querySelector('#cardLogoPrint');
+                            if(logo) {
+                                logo.style.height = '10mm';
+                                logo.style.width = 'auto';
+                                logo.style.maxWidth = '28mm';
+                                logo.style.display = 'block';
+                                logo.style.marginLeft = 'auto';
+                                logo.style.marginRight = 'auto';
+                                logo.style.marginBottom = '1mm';
+                                logo.src = `https://absensipkids.netlify.app/img/mahanaim.png?t=${new Date().getTime()}`;
+                                logo.onerror = function() {
+                                    this.onerror=null;
+                                    this.src='https://placehold.co/150x50/003366/FFFFFF?text=Logo%20Sekolah';
+                                };
+                            }
+                            const title = clonedCardContent.querySelector('.card-header-print h3');
+                            if(title) {
+                                title.style.fontSize = '10pt';
+                                title.style.fontWeight = 'bold';
+                                title.style.color = '#003366';
+                                title.style.margin = '0.5mm 0 0.5mm 0';
+                                title.style.padding = '0';
+                            }
+                            const photoPlaceholder = clonedCardContent.querySelector('.manual-photo-placeholder-print');
+                            if(photoPlaceholder){
+                                photoPlaceholder.style.width = '30mm';
+                                photoPlaceholder.style.height = '40mm';
+                                photoPlaceholder.style.border = '0.5mm dashed #bbb';
+                                photoPlaceholder.style.display = 'flex';
+                                photoPlaceholder.style.alignItems = 'center';
+                                photoPlaceholder.style.justifyContent = 'center';
+                                photoPlaceholder.style.textAlign = 'center';
+                                photoPlaceholder.style.fontSize = '6pt';
+                                photoPlaceholder.style.color = '#aaa';
+                                photoPlaceholder.style.marginTop = '2mm';
+                                photoPlaceholder.style.marginBottom = '1.5mm';
+                                photoPlaceholder.style.backgroundColor = '#fdfdfd';
+                            }
+                            const namaSiswa = clonedCardContent.querySelector('#cardNamaSiswaPrint');
+                            if(namaSiswa){
+                                namaSiswa.style.fontSize = '7.5pt';
+                                namaSiswa.style.fontWeight = 'bold';
+                                namaSiswa.style.color = '#000';
+                                namaSiswa.style.marginBottom = '0.2mm';
+                                namaSiswa.style.textAlign = 'center';
+                                namaSiswa.style.width = '100%';
+                                namaSiswa.style.marginTop = '0mm';
+                            }
+                            const kodeSiswaCard = clonedCardContent.querySelector('#cardKodeSiswaOnCardPrint');
+                             if(kodeSiswaCard){
+                                kodeSiswaCard.style.fontSize = '6.5pt';
+                                kodeSiswaCard.style.fontWeight = 'normal';
+                                kodeSiswaCard.style.color = '#333';
+                                kodeSiswaCard.style.marginBottom = '1.5mm';
+                                kodeSiswaCard.style.textAlign = 'center';
+                                kodeSiswaCard.style.width = '100%';
+                            }
+                            const footerPrint = clonedCardContent.querySelector('.card-footer-print');
+                            if(footerPrint){
+                                footerPrint.style.width = '100%';
+                                footerPrint.style.display = 'flex';
+                                footerPrint.style.justifyContent = 'space-between';
+                                footerPrint.style.alignItems = 'flex-end';
+                                footerPrint.style.padding = '0';
+                                footerPrint.style.marginTop = '1mm'; // Mungkin ini perlu disesuaikan
+                                footerPrint.style.marginBottom = '0.2mm';
+                            }
+                            const qrContainer = clonedCardContent.querySelector('#cardQrCodePrint');
+                            if(qrContainer){
+                                qrContainer.style.width = '12mm';
+                                qrContainer.style.height = '12mm';
+                                const cardKodeElForClone = clonedDoc.getElementById('cardKodeSiswaOnCardPrint');
+                                const qrCodeTextOriginal = cardKodeElForClone ? cardKodeElForClone.textContent.replace('KODE: ','') : '';
+
+                                if(qrCodeTextOriginal && qrCodeTextOriginal !== '-'){
+                                    qrContainer.innerHTML = '';
+                                    new QRCode(qrContainer, {
+                                        text: qrCodeTextOriginal,
+                                        width: Math.floor(12 * 3.78),
+                                        height: Math.floor(12 * 3.78),
+                                        colorDark : "#000000",
+                                        colorLight : "#ffffff",
+                                        correctLevel : QRCode.CorrectLevel.H
+                                    });
+                                }
+                            }
+                             const tglJoin = clonedCardContent.querySelector('#cardTanggalBergabungPrint');
+                             if(tglJoin){
+                                tglJoin.style.fontSize = '5pt';
+                                tglJoin.style.color = '#333';
+                                tglJoin.style.textAlign = 'right';
+                                tglJoin.style.whiteSpace = 'nowrap';
+                                tglJoin.style.marginBottom = '0.6mm'; // Konsisten dengan CSS utama
+                            }
+                        }
+                    }
+                });
+                const imageURL = canvas.toDataURL("image/png");
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageURL;
+                downloadLink.download = fileName;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                showCustomAlert("Kartu berhasil disimpan sebagai gambar.", "success");
+
+            } catch (error) {
+                console.error("Error saving card as image:", error);
+                showCustomAlert("Gagal menyimpan kartu sebagai gambar.", "error");
+            } finally {
+                if (actionButtonsContainer) actionButtonsContainer.style.display = '';
+                if (closeButtonModal) closeButtonModal.style.display = '';
+            }
+        }
+        window.simpanKartuSebagaiGambar = simpanKartuSebagaiGambar;
+
+
+        // --- Initialize Firebase on script load ---
+        console.log("Attempting to call initializeFirebase...");
+        initializeFirebase();
+        console.log("initializeFirebase function call completed.");
+
+        // --- PWA: Service Worker Registration ---
+        if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js') // Menggunakan path absolut dari root domain
+                    .then(registration => {
+                        console.log('Service Worker berhasil diregistrasi dengan scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Registrasi Service Worker gagal. Pastikan file sw.js ada di root domain.', error);
+                    });
+            });
+        } else {
+             console.warn('PWA: Service Worker tidak dapat diregistrasi di lingkungan ini (misalnya, blob atau file URL).');
+        }
+    </script>
+    </body>
+</html>
