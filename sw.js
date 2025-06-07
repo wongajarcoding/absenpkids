@@ -1,4 +1,4 @@
-const CACHE_NAME = 'absensi-pkids-cache-v3'; // Ubah versi jika ada pembaruan aset
+const CACHE_NAME = 'absensi-pkids-cache-v4'; // Ubah versi jika ada pembaruan aset
 const urlsToCache = [
   '/', // Halaman utama/HTML Anda
   'manifest.json',
